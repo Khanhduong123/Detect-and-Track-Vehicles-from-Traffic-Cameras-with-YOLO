@@ -1,0 +1,74 @@
+# ==============================================================================
+# Pre-commit Hook Configuration
+# Includes: Type Checking (mypy), Line Checks/Lints (ruff), Formatting (black/isort),
+#           Secrets Detection (detect-secrets), and Complexity Monitoring (xenon)
+# ==============================================================================
+
+# Global exclusions (e.g. ignore datasets, zipped files, etc.)
+exclude: '^(data/|datasets/|bdd100k_-images-100k-DatasetNinja/|.*\.zip$|.*\.rar$)'
+
+repos:
+  # --- Standard Out-of-the-box Hooks ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=5000'] # Limit to 5MB (datasets should be ignored anyway)
+
+  # --- Code Formatting (black & isort) ---
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        language_version: python3
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black"]
+
+  # --- Line Checks / Linting (ruff) ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # --- Static Type Checking (mypy) ---
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        args: [--ignore-missing-imports, --check-untyped-defs, --install-types, --non-interactive]
+        additional_dependencies: [types-requests, types-urllib3, types-PyYAML]
+
+  # --- Secret Detection (detect-secrets) ---
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline']
+        exclude: 'package.lock.json|.*\.baseline'
+
+  # --- Cyclomatic Complexity Monitoring (xenon) ---
+  - repo: https://github.com/rubik/xenon
+    rev: v0.9.3
+    hooks:
+      - id: xenon
+        args: ["--max-absolute", "B", "--max-modules", "A", "--max-average", "A"]
+
+  # --- Unit Testing (pytest) ---
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: python -c "import sys, pytest; code = pytest.main(); sys.exit(0 if code == 5 else code)"
+        language: system
+        pass_filenames: false
+        always_run: true

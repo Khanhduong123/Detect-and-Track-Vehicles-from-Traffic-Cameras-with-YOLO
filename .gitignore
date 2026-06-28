@@ -1,0 +1,121 @@
+# ==============================================================================
+# Gitignore for YOLO Object Detection (FastAPI Backend + Streamlit UI + Triton)
+# ==============================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Environments & IDEs ---
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+.python-version
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
+
+# --- Jupyter Notebooks ---
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# --- Testing & Code Quality ---
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache/
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+.ipynb_checkpoints
+
+# --- OS Specific ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- Datasets & Large Zip Files (DETRAC / COCO / BDD100k) ---
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+data/
+datasets/
+bdd100k_-images-100k-DatasetNinja/
+
+# --- Machine Learning / YOLO Weights & Runs ---
+# PyTorch, ONNX, TensorRT Engine, OpenVINO
+*.pt
+*.pth
+*.onnx
+*.engine
+*.trt
+*.weights
+*.bin
+*.xml
+runs/
+predict/
+val/
+train/
+
+# --- Triton Inference Server ---
+# We keep configuration files (config.pbtxt) but ignore large model weights
+# inside the model repository.
+model_repository/**/*.onnx
+model_repository/**/*.engine
+model_repository/**/*.bin
+model_repository/**/*.pt
+model_repository/**/*.pth
+
+# --- Streamlit config & secrets ---
+.streamlit/secrets.toml
+.streamlit/config.toml
+!.streamlit/config.toml.example
