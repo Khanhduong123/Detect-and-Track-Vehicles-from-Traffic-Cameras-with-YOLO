@@ -54,7 +54,7 @@ repos:
     hooks:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
-        exclude: 'package.lock.json|.*\.baseline'
+        exclude: 'package.lock.json|.*\.baseline|.*\.ipynb'
 
   # --- Cyclomatic Complexity Monitoring (xenon) ---
   - repo: https://github.com/rubik/xenon
