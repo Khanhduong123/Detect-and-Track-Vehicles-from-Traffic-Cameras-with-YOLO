@@ -68,7 +68,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: /home/khanhduong/miniconda3/envs/pytorch/bin/python -c "import sys, pytest; code = pytest.main(); sys.exit(0 if code == 5 else code)"
+        entry: bash -c "if [ -x /home/khanhduong/miniconda3/envs/pytorch/bin/python ]; then /home/khanhduong/miniconda3/envs/pytorch/bin/python -c 'import sys, pytest; code = pytest.main(); sys.exit(0 if code == 5 else code)'; else python -c 'import sys, pytest; code = pytest.main(); sys.exit(0 if code == 5 else code)'; fi"
         language: system
         pass_filenames: false
         always_run: true
