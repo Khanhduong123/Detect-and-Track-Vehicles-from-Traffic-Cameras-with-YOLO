@@ -150,19 +150,10 @@ def process_and_copy_hutech(samples, split_name):
             f_out.write("\n".join(mapped_lines) + "\n")
 
 
-def filter_and_copy_detrac():
-    print("Filtering and extracting additional data from UA-DETRAC...")
+def scan_detrac_candidates(label_files, detrac_img_dir):
+    candidates = []
+    total_detrac_cars = 0
 
-    detrac_img_dir = os.path.join(DETRAC_DIR, "images", "train")
-    detrac_lbl_dir = os.path.join(DETRAC_DIR, "labels", "train")
-
-    dest_img_dir = os.path.join(OUTPUT_DIR, "train", "images")
-    dest_lbl_dir = os.path.join(OUTPUT_DIR, "train", "labels")
-
-    label_files = glob.glob(os.path.join(detrac_lbl_dir, "*.txt"))
-    copied_count = 0
-
-    # We only process files that do NOT start with hutech_ (the original UA-DETRAC files)
     for lbl_path in tqdm(label_files):
         basename = os.path.basename(lbl_path)
         if basename.startswith("hutech_"):
@@ -175,8 +166,8 @@ def filter_and_copy_detrac():
         if not os.path.exists(img_path):
             continue
 
-        # Check label content for Class 2 (truck) or Class 3 (bus)
         contains_target = False
+        car_count = 0
         mapped_lines = []
 
         with open(lbl_path, "r") as f:
@@ -187,21 +178,102 @@ def filter_and_copy_detrac():
                     # UA-DETRAC classes: 0=motorcycle, 1=car, 2=truck, 3=bus
                     if cls_id in (2, 3):
                         contains_target = True
-                    # Keep all classes in target format
+                    if cls_id == 1:
+                        car_count += 1
                     mapped_lines.append(line.strip())
 
-        # Copy only if it contains truck or bus objects
         if contains_target:
-            # 1. Copy image file (resolves symlinks automatically)
-            shutil.copy2(img_path, os.path.join(dest_img_dir, f"detrac_{img_name}"))
+            candidates.append(
+                {
+                    "lbl_path": lbl_path,
+                    "img_path": img_path,
+                    "basename": basename,
+                    "img_name": img_name,
+                    "car_count": car_count,
+                    "mapped_lines": mapped_lines,
+                }
+            )
+            total_detrac_cars += car_count
 
-            # 2. Write labels file
-            with open(os.path.join(dest_lbl_dir, f"detrac_{basename}"), "w") as f_out:
-                f_out.write("\n".join(mapped_lines) + "\n")
+    return candidates, total_detrac_cars
 
-            copied_count += 1
 
-    print(f"Total filtered UA-DETRAC samples merged into Train: {copied_count}")
+def select_detrac_candidates(candidates, total_detrac_cars, target_detrac_cars):
+    if total_detrac_cars > target_detrac_cars:
+        sample_rate = target_detrac_cars / total_detrac_cars
+        print(f"Applying systematic downsampling with sample rate: {sample_rate:.4f}")
+
+        selected = []
+        acc = 0.0
+        for item in candidates:
+            acc += sample_rate
+            if acc >= 1.0:
+                selected.append(item)
+                acc -= 1.0
+        return selected
+
+    print("Total DETRAC cars is less than target. Keeping all candidates.")
+    return candidates
+
+
+def copy_detrac_candidates(selected_candidates, dest_img_dir, dest_lbl_dir):
+    copied_count = 0
+    copied_cars = 0
+    for item in tqdm(selected_candidates, desc="Copying downsampled UA-DETRAC files"):
+        # 1. Copy image file
+        shutil.copy2(
+            item["img_path"], os.path.join(dest_img_dir, f"detrac_{item['img_name']}")
+        )
+
+        # 2. Write labels file
+        with open(
+            os.path.join(dest_lbl_dir, f"detrac_{item['basename']}"), "w"
+        ) as f_out:
+            f_out.write("\n".join(item["mapped_lines"]) + "\n")
+
+        copied_count += 1
+        copied_cars += item["car_count"]
+
+    return copied_count, copied_cars
+
+
+def filter_and_copy_detrac(hutech_train_cars):
+    print("Filtering, downsampling, and extracting additional data from UA-DETRAC...")
+
+    detrac_img_dir = os.path.join(DETRAC_DIR, "images", "train")
+    detrac_lbl_dir = os.path.join(DETRAC_DIR, "labels", "train")
+
+    dest_img_dir = os.path.join(OUTPUT_DIR, "train", "images")
+    dest_lbl_dir = os.path.join(OUTPUT_DIR, "train", "labels")
+
+    label_files = glob.glob(os.path.join(detrac_lbl_dir, "*.txt"))
+    label_files.sort()  # Sort to keep temporal sequence ordering for systematic downsampling
+
+    print("Scanning UA-DETRAC files for candidates containing bus/truck...")
+    candidates, total_detrac_cars = scan_detrac_candidates(label_files, detrac_img_dir)
+    print(
+        f"Found {len(candidates)} UA-DETRAC candidate images containing {total_detrac_cars} cars."
+    )
+
+    # Target 40,000 car instances in training split
+    target_detrac_cars = max(0, 40000 - hutech_train_cars)
+    print(
+        f"HUTECH train cars: {hutech_train_cars}. Target DETRAC cars: {target_detrac_cars}."
+    )
+
+    selected_candidates = select_detrac_candidates(
+        candidates, total_detrac_cars, target_detrac_cars
+    )
+
+    copied_count, copied_cars = copy_detrac_candidates(
+        selected_candidates, dest_img_dir, dest_lbl_dir
+    )
+
+    print(f"Total selected UA-DETRAC samples merged: {copied_count}")
+    print(f"Total car bounding boxes added from UA-DETRAC: {copied_cars}")
+    print(
+        f"Total training cars (HUTECH + UA-DETRAC): {hutech_train_cars + copied_cars}"
+    )
 
 
 def create_dataset_yaml():
@@ -240,13 +312,24 @@ def main():
         hutech_samples, strat_labels
     )
 
+    # Calculate HUTECH train cars
+    hutech_train_cars = 0
+    for sample in train_hutech:
+        with open(sample["lbl_path"], "r") as f:
+            for line in f:
+                parts = line.strip().split()
+                if parts:
+                    cls_id = int(parts[0])
+                    if hutech_class_map.get(cls_id) == 1:
+                        hutech_train_cars += 1
+
     # 3. Process HUTECH splits
     process_and_copy_hutech(train_hutech, "train")
     process_and_copy_hutech(valid_hutech, "valid")
     process_and_copy_hutech(test_hutech, "test")
 
     # 4. Filter and merge UA-DETRAC data
-    filter_and_copy_detrac()
+    filter_and_copy_detrac(hutech_train_cars)
 
     # 5. Create dataset.yaml configuration file
     create_dataset_yaml()
