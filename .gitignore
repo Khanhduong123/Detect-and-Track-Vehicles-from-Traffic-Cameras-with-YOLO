@@ -89,6 +89,7 @@ Thumbs.db
 *.7z
 data/
 datasets/
+dataset/
 bdd100k_-images-100k-DatasetNinja/
 
 # --- Machine Learning / YOLO Weights & Runs ---
