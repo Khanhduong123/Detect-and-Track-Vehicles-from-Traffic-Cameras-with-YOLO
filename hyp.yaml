@@ -1,0 +1,21 @@
+# YOLOv8m Custom Training & Hyperparameter Configuration
+
+# Core Training Settings
+epochs: 100               # Number of epochs to train for
+batch: 16                 # Batch size (use -1 for auto-batching)
+imgsz: 640                # Input image size
+device: "0"                # Device to run on. E.g., "" (auto-detect), "0" (single GPU), "0,1" (multi-GPU), or "cpu"
+workers: 8                # Number of worker threads for data loading
+optimizer: "AdamW"        # Optimizer to use (SGD, Adam, AdamW, RMSProp, auto)
+lr0: 0.01                 # Initial learning rate (e.g. 0.01 for SGD, 0.001 for AdamW)
+box: 7.5                  # Box loss gain weight (increase e.g. to 10.0 for high occlusion scenes)
+cls: 0.5                  # Class loss gain weight (adjust weight of class loss)
+fraction: 1.0             # Fraction of dataset to train on (useful for rapid testing, e.g. 0.01)
+
+# Advanced Data Augmentations (Specialized for Imbalance Mitigation & Domain Gap)
+mosaic: 1.0               # Enable maximum 4-image mosaic for mixed context learning (0.0 to 1.0)
+mixup: 0.15               # Mixup ratio for motorbike/truck feature diversity (0.0 to 1.0)
+copy_paste: 0.4           # Class-aware Copy-Paste (40% rate for Truck/Motorbike cut/paste onto images)
+degrees: 10.0             # Random rotation angle range (degrees)
+scale: 0.5                # Random scale factor (helps detect both very near/far vehicles)
+fliplr: 0.5               # Random horizontal flip probability (0.0 to 1.0)
