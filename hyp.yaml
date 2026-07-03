@@ -1,6 +1,7 @@
-# YOLOv8m Custom Training & Hyperparameter Configuration
+# YOLO Custom Training & Hyperparameter Configuration
 
 # Core Training Settings
+model: "yolov8m.pt"       # YOLO model version to train (e.g., yolov8m.pt or yolov9m.pt)
 epochs: 100               # Number of epochs to train for
 batch: 16                 # Batch size (use -1 for auto-batching)
 imgsz: 640                # Input image size

@@ -10,6 +10,7 @@ from ultralytics import YOLO
 
 # Standard/Fallback default configuration parameters
 FALLBACK_DEFAULTS: Dict[str, Any] = {
+    "model": "yolov8m.pt",
     "data": "dataset/dataset.yaml",
     "epochs": 100,
     "batch": 16,
@@ -54,6 +55,13 @@ def parse_args(args_list: Any = None) -> argparse.Namespace:
     )
 
     # Set default=None for all options to identify explicit CLI overrides
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        choices=["yolov8m.pt", "yolov9m.pt", "yolov8m", "yolov9m"],
+        help="YOLO model version to train (yolov8m.pt or yolov9m.pt).",
+    )
     parser.add_argument(
         "--data",
         type=str,
@@ -203,10 +211,11 @@ def merge_configs(args: argparse.Namespace, cfg_data: Dict[str, Any]) -> Dict[st
     return training_kwargs
 
 
-def load_yolo_model(resume: bool, project: str, name: str) -> YOLO:
+def load_yolo_model(model_name: str, resume: bool, project: str, name: str) -> YOLO:
     """Load pretrained model or last checkpoint to resume training.
 
     Args:
+        model_name: Name/path of the YOLO model weight file.
         resume: Whether to resume training.
         project: Directory location for training output.
         name: Sub-folder name of the experiment.
@@ -214,7 +223,6 @@ def load_yolo_model(resume: bool, project: str, name: str) -> YOLO:
     Returns:
         YOLO: Loaded model instance.
     """
-    model_name = "yolov8m.pt"
     if resume:
         checkpoint = os.path.join(project, name, "weights", "last.pt")
         if os.path.exists(checkpoint):
@@ -229,7 +237,7 @@ def load_yolo_model(resume: bool, project: str, name: str) -> YOLO:
 
 
 def run_training(args: argparse.Namespace) -> None:
-    """Train YOLOv8m with the specified configurations."""
+    """Train YOLO with the specified configurations."""
     cfg_data = load_yaml_config(args.cfg)
     training_kwargs = merge_configs(args, cfg_data)
 
@@ -237,12 +245,17 @@ def run_training(args: argparse.Namespace) -> None:
     if not training_kwargs["device"]:
         training_kwargs["device"] = "0" if torch.cuda.is_available() else "cpu"
 
-    print("=== YOLOv8m Training Configuration ===")
+    print("=== YOLO Training Configuration ===")
     for key, val in training_kwargs.items():
         print(f"  {key:<15}: {val}")
     print("=======================================")
 
+    model_name = training_kwargs.pop("model", "yolov8m.pt")
+    if not model_name.endswith(".pt"):
+        model_name += ".pt"
+
     model = load_yolo_model(
+        model_name,
         training_kwargs["resume"],
         training_kwargs["project"],
         training_kwargs["name"],

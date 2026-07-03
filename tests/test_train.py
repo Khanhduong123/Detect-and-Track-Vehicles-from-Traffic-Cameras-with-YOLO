@@ -10,6 +10,7 @@ def test_parse_args_defaults() -> None:
     args = parse_args([])
     expected = {
         "cfg": "hyp.yaml",
+        "model": None,
         "data": None,
         "epochs": None,
         "batch": None,
@@ -40,6 +41,8 @@ def test_parse_args_custom() -> None:
         [
             "--cfg",
             "custom_hyp.yaml",
+            "--model",
+            "yolov9m.pt",
             "--data",
             "custom_data.yaml",
             "--epochs",
@@ -83,6 +86,7 @@ def test_parse_args_custom() -> None:
     )
     expected = {
         "cfg": "custom_hyp.yaml",
+        "model": "yolov9m.pt",
         "data": "custom_data.yaml",
         "epochs": 50,
         "batch": 32,
@@ -165,3 +169,30 @@ def test_run_training_resume(
     mock_model.train.assert_called_once()
     kwargs = mock_model.train.call_args[1]
     assert kwargs["resume"] is True
+
+
+@patch("train.YOLO")
+@patch("train.torch.cuda.is_available")
+@patch("train.os.path.exists")
+def test_run_training_custom_model(
+    mock_exists: MagicMock,
+    mock_cuda_available: MagicMock,
+    mock_yolo: MagicMock,
+) -> None:
+    """Test run_training with a custom model name like yolov9m."""
+    mock_cuda_available.return_value = False
+    mock_exists.return_value = False
+    args = parse_args(["--model", "yolov9m"])
+
+    mock_model = MagicMock()
+    mock_yolo.return_value = mock_model
+    mock_val_results = MagicMock()
+    mock_val_results.results_dict = {"metrics/mAP50": 0.85}
+    mock_model.val.return_value = mock_val_results
+
+    run_training(args)
+
+    mock_yolo.assert_called_once_with("yolov9m.pt")
+    mock_model.train.assert_called_once()
+    kwargs = mock_model.train.call_args[1]
+    assert "model" not in kwargs
