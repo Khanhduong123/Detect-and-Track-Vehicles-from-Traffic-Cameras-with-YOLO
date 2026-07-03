@@ -115,7 +115,7 @@ def test_run_training_base(
     mock_cuda_available: MagicMock,
     mock_yolo: MagicMock,
 ) -> None:
-    """Test run_training with base parameters and mocked config path exists."""
+    """Test run_training with base parameters when the config file does not exist."""
     mock_cuda_available.return_value = True
     # Make os.path.exists return False for the cfg to use fallbacks
     mock_exists.return_value = False
