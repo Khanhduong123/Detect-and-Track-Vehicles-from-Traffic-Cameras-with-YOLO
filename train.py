@@ -1,4 +1,4 @@
-"""YOLOv8m training pipeline for vehicle detection in traffic cameras."""
+"""YOLO training pipeline for vehicle detection in traffic cameras."""
 
 import argparse
 import os
@@ -35,7 +35,7 @@ FALLBACK_DEFAULTS: Dict[str, Any] = {
 
 
 def parse_args(args_list: Any = None) -> argparse.Namespace:
-    """Parse command line arguments for YOLOv8m training.
+    """Parse command line arguments for YOLO training.
 
     Args:
         args_list: List of arguments to parse. If None, uses sys.argv[1:].
@@ -44,7 +44,7 @@ def parse_args(args_list: Any = None) -> argparse.Namespace:
         argparse.Namespace: The parsed command line arguments.
     """
     parser = argparse.ArgumentParser(
-        description="Train YOLOv8m on joint HUTECH and UA-DETRAC dataset."
+        description="Train YOLO on joint HUTECH and UA-DETRAC dataset."
     )
     # Configuration file parameter
     parser.add_argument(
@@ -60,7 +60,7 @@ def parse_args(args_list: Any = None) -> argparse.Namespace:
         type=str,
         default=None,
         choices=["yolov8m.pt", "yolov9m.pt", "yolov8m", "yolov9m"],
-        help="YOLO model version to train (yolov8m.pt or yolov9m.pt).",
+        help="YOLO model version to train, e.g., yolov8m, yolov9m (with or without .pt extension).",
     )
     parser.add_argument(
         "--data",
