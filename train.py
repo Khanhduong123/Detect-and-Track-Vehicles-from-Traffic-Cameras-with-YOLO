@@ -176,7 +176,7 @@ def load_yaml_config(cfg_path: str) -> Dict[str, Any]:
             if isinstance(loaded, dict):
                 print(f"Loaded configuration parameters from {cfg_path}")
                 return loaded
-    except Exception as e:
+    except (OSError, yaml.YAMLError) as e:
         print(f"Warning: Failed to load config from {cfg_path}: {e}")
     return {}
 
