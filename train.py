@@ -250,8 +250,14 @@ def run_training(args: argparse.Namespace) -> None:
         print(f"  {key:<15}: {val}")
     print("=======================================")
 
-    model_name = training_kwargs.pop("model", "yolov8m.pt")
-    if not model_name.endswith(".pt"):
+    model_raw = training_kwargs.pop("model", "yolov8m.pt")
+    if not isinstance(model_raw, str) or not model_raw.strip():
+        model_name = "yolov8m.pt"
+    else:
+        model_name = model_raw.strip()
+
+    _, ext = os.path.splitext(model_name)
+    if not ext:
         model_name += ".pt"
 
     model = load_yolo_model(

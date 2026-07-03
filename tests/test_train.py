@@ -196,3 +196,47 @@ def test_run_training_custom_model(
     mock_model.train.assert_called_once()
     kwargs = mock_model.train.call_args[1]
     assert "model" not in kwargs
+
+
+@patch("train.YOLO")
+@patch("train.torch.cuda.is_available")
+@patch("train.os.path.exists")
+def test_run_training_model_edge_cases(
+    mock_exists: MagicMock,
+    mock_cuda_available: MagicMock,
+    mock_yolo: MagicMock,
+) -> None:
+    """Test run_training with non-string and non-standard model name extensions."""
+    mock_cuda_available.return_value = False
+    mock_exists.return_value = False
+
+    # Mock merge_configs to return a dict with model: None
+    with patch("train.merge_configs") as mock_merge:
+        mock_merge.return_value = {
+            "model": None,
+            "device": "cpu",
+            "resume": False,
+            "project": "runs",
+            "name": "exp",
+        }
+        mock_model = MagicMock()
+        mock_yolo.return_value = mock_model
+        mock_val_results = MagicMock()
+        mock_val_results.results_dict = {"metrics/mAP50": 0.85}
+        mock_model.val.return_value = mock_val_results
+
+        run_training(parse_args([]))
+        mock_yolo.assert_called_with("yolov8m.pt")
+
+    # Mock merge_configs to return a dict with a yaml model configuration file
+    with patch("train.merge_configs") as mock_merge:
+        mock_yolo.reset_mock()
+        mock_merge.return_value = {
+            "model": "yolov8m.yaml",
+            "device": "cpu",
+            "resume": False,
+            "project": "runs",
+            "name": "exp",
+        }
+        run_training(parse_args([]))
+        mock_yolo.assert_called_with("yolov8m.yaml")
