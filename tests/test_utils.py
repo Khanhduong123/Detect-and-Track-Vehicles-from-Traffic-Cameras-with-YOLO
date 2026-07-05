@@ -119,10 +119,24 @@ def test_setup_mlflow_resume_not_found(mock_mlflow: MagicMock) -> None:
 
 
 @patch("utils.YOLO")
-def test_load_yolo_model_base(mock_yolo: MagicMock) -> None:
+@patch("utils.os.path.exists")
+def test_load_yolo_model_base(mock_exists: MagicMock, mock_yolo: MagicMock) -> None:
     """Test load_yolo_model loads pretrained model when resume is False."""
+    mock_exists.return_value = False
     load_yolo_model("yolov8m.pt", resume=False, project="runs", name="exp")
     mock_yolo.assert_called_once_with("yolov8m.pt")
+
+
+@patch("utils.YOLO")
+@patch("utils.os.path.exists")
+def test_load_yolo_model_local_weights(
+    mock_exists: MagicMock, mock_yolo: MagicMock
+) -> None:
+    """Test load_yolo_model loads from weights/ folder when file exists."""
+    # First call to exists (for raw name) is False, second call (for weights_path) is True
+    mock_exists.side_effect = lambda path: path == os.path.join("weights", "yolov8m.pt")
+    load_yolo_model("yolov8m.pt", resume=False, project="runs", name="exp")
+    mock_yolo.assert_called_once_with(os.path.join("weights", "yolov8m.pt"))
 
 
 @patch("utils.YOLO")
@@ -146,6 +160,28 @@ def test_load_yolo_model_resume_search(
     mock_exists.side_effect = lambda path: "runs/detect/runs/detect" in path
     load_yolo_model("yolov8m.pt", resume=True, project="runs", name="exp")
     mock_yolo.assert_called_once_with("runs/detect/runs/detect/exp/weights/last.pt")
+
+
+@patch("utils.YOLO")
+@patch("utils.glob.glob")
+@patch("utils.os.path.getmtime")
+@patch("utils.os.path.exists")
+def test_load_yolo_model_resume_glob(
+    mock_exists: MagicMock,
+    mock_getmtime: MagicMock,
+    mock_glob: MagicMock,
+    mock_yolo: MagicMock,
+) -> None:
+    """Test load_yolo_model glob fallback sorts matches by mtime descending."""
+    mock_exists.side_effect = lambda path: path == "new_path/exp/weights/last.pt"
+    mock_glob.return_value = [
+        "old_path/exp/weights/last.pt",
+        "new_path/exp/weights/last.pt",
+    ]
+    mock_getmtime.side_effect = lambda path: 1000 if "old_path" in path else 2000
+
+    load_yolo_model("yolov8m.pt", resume=True, project="runs", name="exp")
+    mock_yolo.assert_called_once_with("new_path/exp/weights/last.pt")
 
 
 def test_load_yolo_model_resume_not_found() -> None:
