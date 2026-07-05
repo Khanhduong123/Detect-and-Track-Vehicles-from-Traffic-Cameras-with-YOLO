@@ -111,9 +111,9 @@ def test_parse_args_custom() -> None:
     assert vars(args) == expected
 
 
-@patch("train.YOLO")
+@patch("utils.YOLO")
 @patch("train.torch.cuda.is_available")
-@patch("train.os.path.exists")
+@patch("utils.os.path.exists")
 def test_run_training_base(
     mock_exists: MagicMock,
     mock_cuda_available: MagicMock,
@@ -143,8 +143,8 @@ def test_run_training_base(
     assert kwargs["device"] == "0"
 
 
-@patch("train.YOLO")
-@patch("train.os.path.exists")
+@patch("utils.YOLO")
+@patch("utils.os.path.exists")
 @patch("train.torch.cuda.is_available")
 def test_run_training_resume(
     mock_cuda_available: MagicMock,
@@ -171,9 +171,9 @@ def test_run_training_resume(
     assert kwargs["resume"] is True
 
 
-@patch("train.YOLO")
+@patch("utils.YOLO")
 @patch("train.torch.cuda.is_available")
-@patch("train.os.path.exists")
+@patch("utils.os.path.exists")
 def test_run_training_custom_model(
     mock_exists: MagicMock,
     mock_cuda_available: MagicMock,
@@ -198,9 +198,9 @@ def test_run_training_custom_model(
     assert "model" not in kwargs
 
 
-@patch("train.YOLO")
+@patch("utils.YOLO")
 @patch("train.torch.cuda.is_available")
-@patch("train.os.path.exists")
+@patch("utils.os.path.exists")
 def test_run_training_model_edge_cases(
     mock_exists: MagicMock,
     mock_cuda_available: MagicMock,
