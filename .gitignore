@@ -122,3 +122,4 @@ model_repository/**/*.pth
 !.streamlit/config.toml.example
 
 mlflow.db
+mlruns/

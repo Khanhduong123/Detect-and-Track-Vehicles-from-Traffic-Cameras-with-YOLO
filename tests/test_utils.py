@@ -119,10 +119,24 @@ def test_setup_mlflow_resume_not_found(mock_mlflow: MagicMock) -> None:
 
 
 @patch("utils.YOLO")
-def test_load_yolo_model_base(mock_yolo: MagicMock) -> None:
+@patch("utils.os.path.exists")
+def test_load_yolo_model_base(mock_exists: MagicMock, mock_yolo: MagicMock) -> None:
     """Test load_yolo_model loads pretrained model when resume is False."""
+    mock_exists.return_value = False
     load_yolo_model("yolov8m.pt", resume=False, project="runs", name="exp")
     mock_yolo.assert_called_once_with("yolov8m.pt")
+
+
+@patch("utils.YOLO")
+@patch("utils.os.path.exists")
+def test_load_yolo_model_local_weights(
+    mock_exists: MagicMock, mock_yolo: MagicMock
+) -> None:
+    """Test load_yolo_model loads from weights/ folder when file exists."""
+    # First call to exists (for raw name) is False, second call (for weights_path) is True
+    mock_exists.side_effect = lambda path: path == os.path.join("weights", "yolov8m.pt")
+    load_yolo_model("yolov8m.pt", resume=False, project="runs", name="exp")
+    mock_yolo.assert_called_once_with(os.path.join("weights", "yolov8m.pt"))
 
 
 @patch("utils.YOLO")

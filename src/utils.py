@@ -286,6 +286,28 @@ def setup_mlflow_resume(run_name: str | None, experiment_name: str) -> None:
         print(f"Warning: Failed to setup MLflow resume for run '{run_name}': {e}")
 
 
+def _find_resume_checkpoint(model_name: str, project: str, name: str) -> str:
+    """Find the best last.pt checkpoint path for resuming training."""
+    if os.path.exists(model_name) and model_name.endswith("last.pt"):
+        return model_name
+
+    candidates = [
+        os.path.join(project, name, "weights", "last.pt"),
+        os.path.join("runs/detect/runs/detect", name, "weights", "last.pt"),
+        os.path.join(name, "weights", "last.pt"),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+
+    search_pattern = os.path.join("**", name, "weights", "last.pt")
+    matches = glob.glob(search_pattern, recursive=True)
+    if matches:
+        return matches[0]
+
+    return ""
+
+
 def load_yolo_model(model_name: str, resume: bool, project: str, name: str) -> YOLO:
     """Load pretrained model or last checkpoint to resume training.
 
@@ -299,29 +321,7 @@ def load_yolo_model(model_name: str, resume: bool, project: str, name: str) -> Y
         YOLO: Loaded model instance.
     """
     if resume:
-        # Check if the model_name is already a path to a last.pt checkpoint
-        if os.path.exists(model_name) and model_name.endswith("last.pt"):
-            print(f"Resuming training from explicit checkpoint path: {model_name}")
-            return YOLO(model_name)
-
-        # Otherwise, search for the checkpoint based on name and project
-        checkpoint = ""
-        candidates = [
-            os.path.join(project, name, "weights", "last.pt"),
-            os.path.join("runs/detect/runs/detect", name, "weights", "last.pt"),
-            os.path.join(name, "weights", "last.pt"),
-        ]
-        for path in candidates:
-            if os.path.exists(path):
-                checkpoint = path
-                break
-
-        if not checkpoint:
-            search_pattern = os.path.join("**", name, "weights", "last.pt")
-            matches = glob.glob(search_pattern, recursive=True)
-            if matches:
-                checkpoint = matches[0]
-
+        checkpoint = _find_resume_checkpoint(model_name, project, name)
         if checkpoint and os.path.exists(checkpoint):
             print(f"Resuming training from checkpoint: {checkpoint}")
             return YOLO(checkpoint)
@@ -331,6 +331,16 @@ def load_yolo_model(model_name: str, resume: bool, project: str, name: str) -> Y
             f"could not be found in {project} or workspace."
         )
     else:
+        # Check if the model exists locally or inside the weights/ folder
+        if os.path.exists(model_name):
+            print(f"Loading pretrained model from path: {model_name}")
+            return YOLO(model_name)
+
+        weights_path = os.path.join("weights", model_name)
+        if os.path.exists(weights_path):
+            print(f"Loading pretrained model from local weights: {weights_path}")
+            return YOLO(weights_path)
+
         print(f"Loading pretrained model: {model_name}")
         return YOLO(model_name)
 

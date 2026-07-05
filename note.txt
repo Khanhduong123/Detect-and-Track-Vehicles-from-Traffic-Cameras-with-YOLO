@@ -1,2 +1,9 @@
-mlflow ui --backend-store-uri sqlite:///mlflow.db
+# Launch MLflow UI (bound to all interfaces for remote browser access)
+mlflow ui --backend-store-uri sqlite:///mlflow.db --host 0.0.0.0
+
+# Alternate secure method via SSH Tunneling (run this on your local PC):
+# ssh -L 5000:127.0.0.1:5000 user@remote-host-ip
+# Then access in your local browser at http://localhost:5000
+
+# Continue YOLO Training command
 python src/train.py --resume --name yolov8m_traffic-4
