@@ -120,3 +120,5 @@ model_repository/**/*.pth
 .streamlit/secrets.toml
 .streamlit/config.toml
 !.streamlit/config.toml.example
+
+mlflow.db
