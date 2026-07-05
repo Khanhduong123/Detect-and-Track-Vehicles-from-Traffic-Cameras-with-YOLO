@@ -1,12 +1,57 @@
-"""YOLO training pipeline for vehicle detection in traffic cameras."""
+"""Utility and configuration helper functions for YOLO training."""
 
 import argparse
+import glob
 import os
 from typing import Any, Dict
 
-import torch
 import yaml
+from tqdm import tqdm as tqdm_bar
 from ultralytics import YOLO
+
+# Force MLflow to use sqlite database in the project directory
+os.environ["MLFLOW_TRACKING_URI"] = "sqlite:///mlflow.db"
+os.environ["MLFLOW_EXPERIMENT_NAME"] = "Traffic-Vehicle-Detection"
+
+try:
+    import mlflow
+except ImportError:
+    mlflow = None
+
+# Monkey-patch MLflow log_params to prevent crashes when resuming runs with modified parameters
+if mlflow is not None:
+    try:
+        original_log_params = mlflow.log_params
+
+        def safe_log_params(params: dict, *args, **kwargs):
+            active_run = mlflow.active_run()
+            if active_run:
+                try:
+                    client = mlflow.tracking.MlflowClient()
+                    run_data = client.get_run(active_run.info.run_id).data
+                    existing_params = run_data.params
+
+                    # Only log parameters that are either new or have the exact same value
+                    filtered_params = {}
+                    for k, v in params.items():
+                        if k in existing_params:
+                            if str(v) == str(existing_params[k]):
+                                filtered_params[k] = v
+                        else:
+                            filtered_params[k] = v
+
+                    if filtered_params:
+                        original_log_params(filtered_params, *args, **kwargs)
+                except Exception as e:
+                    print(f"Warning in patched mlflow.log_params: {e}")
+                    original_log_params(params, *args, **kwargs)
+            else:
+                original_log_params(params, *args, **kwargs)
+
+        mlflow.log_params = safe_log_params
+    except Exception:
+        pass
+
 
 # Standard/Fallback default configuration parameters
 FALLBACK_DEFAULTS: Dict[str, Any] = {
@@ -211,6 +256,36 @@ def merge_configs(args: argparse.Namespace, cfg_data: Dict[str, Any]) -> Dict[st
     return training_kwargs
 
 
+def setup_mlflow_resume(run_name: str | None, experiment_name: str) -> None:
+    """Check if there is an existing MLflow run with the given name and set MLFLOW_RUN_ID to resume it."""
+    if not run_name or mlflow is None:
+        return
+    try:
+        tracking_uri = os.environ.get("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
+        mlflow.set_tracking_uri(tracking_uri)
+
+        # Search for runs with the matching run name in the experiment
+        filter_str = f"tags.mlflow.runName = '{run_name}'"
+        runs = mlflow.search_runs(
+            experiment_names=[experiment_name],
+            filter_string=filter_str,
+            output_format="pandas",
+        )
+
+        if not runs.empty:
+            run_id = runs.iloc[0]["run_id"]
+            print(
+                f"Found existing MLflow run '{run_name}' with ID: {run_id}. Setting MLFLOW_RUN_ID to resume logging."
+            )
+            os.environ["MLFLOW_RUN_ID"] = run_id
+        else:
+            print(
+                f"No existing MLflow run found for '{run_name}' in experiment '{experiment_name}'. A new run will be started."
+            )
+    except Exception as e:
+        print(f"Warning: Failed to setup MLflow resume for run '{run_name}': {e}")
+
+
 def load_yolo_model(model_name: str, resume: bool, project: str, name: str) -> YOLO:
     """Load pretrained model or last checkpoint to resume training.
 
@@ -224,32 +299,44 @@ def load_yolo_model(model_name: str, resume: bool, project: str, name: str) -> Y
         YOLO: Loaded model instance.
     """
     if resume:
-        checkpoint = os.path.join(project, name, "weights", "last.pt")
-        if os.path.exists(checkpoint):
+        # Check if the model_name is already a path to a last.pt checkpoint
+        if os.path.exists(model_name) and model_name.endswith("last.pt"):
+            print(f"Resuming training from explicit checkpoint path: {model_name}")
+            return YOLO(model_name)
+
+        # Otherwise, search for the checkpoint based on name and project
+        checkpoint = ""
+        candidates = [
+            os.path.join(project, name, "weights", "last.pt"),
+            os.path.join("runs/detect/runs/detect", name, "weights", "last.pt"),
+            os.path.join(name, "weights", "last.pt"),
+        ]
+        for path in candidates:
+            if os.path.exists(path):
+                checkpoint = path
+                break
+
+        if not checkpoint:
+            search_pattern = os.path.join("**", name, "weights", "last.pt")
+            matches = glob.glob(search_pattern, recursive=True)
+            if matches:
+                checkpoint = matches[0]
+
+        if checkpoint and os.path.exists(checkpoint):
             print(f"Resuming training from checkpoint: {checkpoint}")
             return YOLO(checkpoint)
-        print(
-            f"Error: Last checkpoint '{checkpoint}' not found. Loading base pretrained model."
+
+        raise FileNotFoundError(
+            f"Error: Resume requested, but checkpoint file 'last.pt' for run '{name}' "
+            f"could not be found in {project} or workspace."
         )
     else:
         print(f"Loading pretrained model: {model_name}")
-    return YOLO(model_name)
+        return YOLO(model_name)
 
 
-def run_training(args: argparse.Namespace) -> None:
-    """Train YOLO with the specified configurations."""
-    cfg_data = load_yaml_config(args.cfg)
-    training_kwargs = merge_configs(args, cfg_data)
-
-    # Handle device default
-    if not training_kwargs["device"]:
-        training_kwargs["device"] = "0" if torch.cuda.is_available() else "cpu"
-
-    print("=== YOLO Training Configuration ===")
-    for key, val in training_kwargs.items():
-        print(f"  {key:<15}: {val}")
-    print("=======================================")
-
+def get_model_name(training_kwargs: Dict[str, Any]) -> str:
+    """Extract and validate the model name from training kwargs."""
     model_raw = training_kwargs.pop("model", "yolov8m.pt")
     if not isinstance(model_raw, str) or not model_raw.strip():
         model_name = "yolov8m.pt"
@@ -259,19 +346,11 @@ def run_training(args: argparse.Namespace) -> None:
     _, ext = os.path.splitext(model_name)
     if not ext:
         model_name += ".pt"
+    return model_name
 
-    model = load_yolo_model(
-        model_name,
-        training_kwargs["resume"],
-        training_kwargs["project"],
-        training_kwargs["name"],
-    )
 
-    print("Starting training...")
-    model.train(**training_kwargs)
-    print("Training completed.")
-
-    # Run validation on the test set to report final test performance
+def evaluate_model(model: YOLO) -> None:
+    """Evaluate model on the test split and report metrics."""
     print("Evaluating model on the test set...")
     val_results = model.val(split="test")
     print("Validation on test split completed.")
@@ -281,11 +360,34 @@ def run_training(args: argparse.Namespace) -> None:
             print(f"  {metric}: {val:.4f}")
 
 
-def main() -> None:
-    """Main entry point."""
-    args = parse_args()
-    run_training(args)
+def register_tqdm_callbacks(model: YOLO) -> None:
+    """Register custom tqdm progress bar callbacks on the YOLO model."""
 
+    def on_train_epoch_start(trainer):
+        # get total batches in the training dataloader
+        total_batches = (
+            len(trainer.train_loader) if hasattr(trainer, "train_loader") else 1
+        )
+        trainer.custom_pbar = tqdm_bar(
+            total=total_batches,
+            desc=f"Epoch {trainer.epoch + 1}/{trainer.epochs}",
+            leave=True,
+            bar_format="{l_bar}{bar:30}{r_bar}",
+        )
 
-if __name__ == "__main__":
-    main()
+    def on_train_batch_end(trainer):
+        if hasattr(trainer, "custom_pbar"):
+            # Update progress bar with loss values
+            if hasattr(trainer, "tloss") and trainer.tloss is not None:
+                metrics_dict = trainer.label_loss_items(trainer.tloss, prefix="train")
+                postfix = {k: f"{v:.4f}" for k, v in metrics_dict.items()}
+                trainer.custom_pbar.set_postfix(postfix)
+            trainer.custom_pbar.update(1)
+
+    def on_train_epoch_end(trainer):
+        if hasattr(trainer, "custom_pbar"):
+            trainer.custom_pbar.close()
+
+    model.add_callback("on_train_epoch_start", on_train_epoch_start)
+    model.add_callback("on_train_batch_end", on_train_batch_end)
+    model.add_callback("on_train_epoch_end", on_train_epoch_end)

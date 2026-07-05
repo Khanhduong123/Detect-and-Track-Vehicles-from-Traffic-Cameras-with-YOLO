@@ -3,11 +3,11 @@
 # Core Training Settings
 model: "yolov8m.pt"       # YOLO model version to train (e.g., yolov8m.pt or yolov9m.pt)
 epochs: 100               # Number of epochs to train for
-batch: 16                 # Batch size (use -1 for auto-batching)
+batch: 32                 # Batch size (use -1 for auto-batching)
 imgsz: 640                # Input image size
-device: ""                # Device to run on. E.g., "" (auto-detect), "0" (single GPU), "0,1" (multi-GPU), or "cpu"
+device: "0"                # Device to run on. E.g., "" (auto-detect), "0" (single GPU), "0,1" (multi-GPU), or "cpu"
 workers: 8                # Number of worker threads for data loading
-optimizer: "AdamW"        # Optimizer to use (SGD, Adam, AdamW, RMSProp, auto)
+optimizer: "Adam"        # Optimizer to use (SGD, Adam, AdamW, RMSProp, auto)
 lr0: 0.01                 # Initial learning rate (e.g. 0.01 for SGD, 0.001 for AdamW)
 box: 7.5                  # Box loss gain weight (increase e.g. to 10.0 for high occlusion scenes)
 cls: 0.5                  # Class loss gain weight (adjust weight of class loss)
