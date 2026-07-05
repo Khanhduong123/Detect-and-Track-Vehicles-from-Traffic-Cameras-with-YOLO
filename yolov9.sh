@@ -1,2 +1,2 @@
 #!/bin/bash
-python train.py --model yolov9m
+python src/train.py --model weights/yolov9m.pt

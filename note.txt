@@ -1,1 +1,2 @@
 /opt/conda/envs/pytorch/bin/mlflow ui --backend-store-uri sqlite:///mlflow.db
+python src/train.py --resume --name yolov8m_traffic-4
