@@ -162,6 +162,28 @@ def test_load_yolo_model_resume_search(
     mock_yolo.assert_called_once_with("runs/detect/runs/detect/exp/weights/last.pt")
 
 
+@patch("utils.YOLO")
+@patch("utils.glob.glob")
+@patch("utils.os.path.getmtime")
+@patch("utils.os.path.exists")
+def test_load_yolo_model_resume_glob(
+    mock_exists: MagicMock,
+    mock_getmtime: MagicMock,
+    mock_glob: MagicMock,
+    mock_yolo: MagicMock,
+) -> None:
+    """Test load_yolo_model glob fallback sorts matches by mtime descending."""
+    mock_exists.side_effect = lambda path: path == "new_path/exp/weights/last.pt"
+    mock_glob.return_value = [
+        "old_path/exp/weights/last.pt",
+        "new_path/exp/weights/last.pt",
+    ]
+    mock_getmtime.side_effect = lambda path: 1000 if "old_path" in path else 2000
+
+    load_yolo_model("yolov8m.pt", resume=True, project="runs", name="exp")
+    mock_yolo.assert_called_once_with("new_path/exp/weights/last.pt")
+
+
 def test_load_yolo_model_resume_not_found() -> None:
     """Test load_yolo_model raises FileNotFoundError when checkpoint is missing."""
     with pytest.raises(FileNotFoundError):

@@ -303,6 +303,8 @@ def _find_resume_checkpoint(model_name: str, project: str, name: str) -> str:
     search_pattern = os.path.join("**", name, "weights", "last.pt")
     matches = glob.glob(search_pattern, recursive=True)
     if matches:
+        # Sort matches by modification time descending to select the latest checkpoint
+        matches.sort(key=os.path.getmtime, reverse=True)
         return matches[0]
 
     return ""
