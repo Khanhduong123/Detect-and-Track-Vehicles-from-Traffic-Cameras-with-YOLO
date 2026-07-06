@@ -223,3 +223,59 @@ def test_register_tqdm_callbacks(mock_yolo_class: MagicMock) -> None:
     assert "on_train_epoch_start" in calls
     assert "on_train_batch_end" in calls
     assert "on_train_epoch_end" in calls
+
+
+def test_mlflow_patched_functions() -> None:
+    """Test that mlflow functions are monkey-patched correctly."""
+    import utils
+
+    if utils.mlflow is None:
+        pytest.skip("mlflow is not installed")
+
+    assert utils.mlflow.log_metric.__name__ == "safe_log_metric"
+    assert utils.mlflow.log_metrics.__name__ == "safe_log_metrics"
+
+
+def test_mlflow_log_metric_increment() -> None:
+    """Test that safe_log_metric increments step by 1."""
+    import utils
+
+    if utils.mlflow is None:
+        pytest.skip("mlflow is not installed")
+
+    mock_orig = MagicMock()
+    # Save current original_log_metric
+    old_orig = utils.original_log_metric
+    utils.original_log_metric = mock_orig
+    try:
+        utils.mlflow.log_metric("acc", 0.95, step=0)
+        mock_orig.assert_called_once_with("acc", 0.95, 1)
+
+        mock_orig.reset_mock()
+        utils.mlflow.log_metric("acc", 0.95, step=None)
+        mock_orig.assert_called_once_with("acc", 0.95, None)
+    finally:
+        utils.original_log_metric = old_orig
+
+
+def test_mlflow_log_metrics_increment() -> None:
+    """Test that safe_log_metrics increments step by 1."""
+    import utils
+
+    if utils.mlflow is None:
+        pytest.skip("mlflow is not installed")
+
+    mock_orig = MagicMock()
+    # Save current original_log_metrics
+    old_orig = utils.original_log_metrics
+    utils.original_log_metrics = mock_orig
+    try:
+        metrics = {"loss": 0.1, "mAP": 0.8}
+        utils.mlflow.log_metrics(metrics, step=5)
+        mock_orig.assert_called_once_with(metrics, 6)
+
+        mock_orig.reset_mock()
+        utils.mlflow.log_metrics(metrics, step=None)
+        mock_orig.assert_called_once_with(metrics, None)
+    finally:
+        utils.original_log_metrics = old_orig

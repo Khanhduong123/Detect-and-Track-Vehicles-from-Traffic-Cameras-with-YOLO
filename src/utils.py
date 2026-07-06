@@ -18,6 +18,10 @@ try:
 except ImportError:
     mlflow = None
 
+# References to original MLflow functions for testing/patching
+original_log_metric: Any = None
+original_log_metrics: Any = None
+
 # Monkey-patch MLflow log_params to prevent crashes when resuming runs with modified parameters
 if mlflow is not None:
     try:
@@ -49,6 +53,29 @@ if mlflow is not None:
                 original_log_params(params, *args, **kwargs)
 
         mlflow.log_params = safe_log_params
+
+        # Monkey-patch log_metric and log_metrics to start steps from 1 instead of 0
+        original_log_metric = getattr(mlflow, "log_metric", None)
+        original_log_metrics = getattr(mlflow, "log_metrics", None)
+
+        if original_log_metric is not None:
+
+            def safe_log_metric(key, value, step=None, *args, **kwargs):
+                if step is not None:
+                    step = step + 1
+                return original_log_metric(key, value, step, *args, **kwargs)
+
+            mlflow.log_metric = safe_log_metric
+
+        if original_log_metrics is not None:
+
+            def safe_log_metrics(metrics, step=None, *args, **kwargs):
+                if step is not None:
+                    step = step + 1
+                return original_log_metrics(metrics, step, *args, **kwargs)
+
+            mlflow.log_metrics = safe_log_metrics
+
     except Exception:
         pass
 
