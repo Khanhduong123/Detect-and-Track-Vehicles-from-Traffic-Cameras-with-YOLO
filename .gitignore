@@ -119,3 +119,7 @@ model_repository/**/*.pth
 .streamlit/secrets.toml
 .streamlit/config.toml
 !.streamlit/config.toml.example
+
+dataset/
+mlflow.db
+mlruns/
