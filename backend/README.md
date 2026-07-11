@@ -27,7 +27,8 @@ This directory houses the backend codebase for the Traffic Violation Detection S
    ```
 3. Run the development server:
    ```bash
-   uvicorn app.main:app --reload
+   # Run from the repository root directory
+   uvicorn backend.app.main:app --reload
    ```
 
 ### Docker
