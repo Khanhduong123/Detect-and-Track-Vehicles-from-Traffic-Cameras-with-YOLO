@@ -21,9 +21,13 @@ def setup_logging():
     )
 
     # Standard python logging configuration to output JSON structured logs
-    handler = logging.StreamHandler(sys.stdout)
     root_logger = logging.getLogger()
-    root_logger.addHandler(handler)
+    if not any(
+        isinstance(h, logging.StreamHandler) and h.stream == sys.stdout
+        for h in root_logger.handlers
+    ):
+        handler = logging.StreamHandler(sys.stdout)
+        root_logger.addHandler(handler)
     root_logger.setLevel(logging.INFO)
 
 
