@@ -4,12 +4,7 @@ on:
   push:
     branches:
       - main
-      - training-eda
-      - 'feat/**'
   pull_request:
-    branches:
-      - main
-      - training-eda
 
 jobs:
   test:
