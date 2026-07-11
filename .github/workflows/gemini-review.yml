@@ -97,7 +97,13 @@ jobs:
               },
               "tools": {
                 "core": [
-                  "run_shell_command(*)"
+                  "run_shell_command(*)",
+                  "read_file",
+                  "write_file",
+                  "replace",
+                  "grep_search",
+                  "glob",
+                  "list_directory"
                 ]
               }
             }

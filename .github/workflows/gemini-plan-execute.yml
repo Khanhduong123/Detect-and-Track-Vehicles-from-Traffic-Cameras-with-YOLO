@@ -95,14 +95,13 @@ jobs:
                     "ghcr.io/github/github-mcp-server:v0.27.0"
                   ],
                   "includeTools": [
-                    "add_issue_comment",
-                    "issue_read",
+                    "add_comment_to_issue",
+                    "get_issue",
                     "list_issues",
-                    "search_issues",
                     "create_pull_request",
-                    "pull_request_read",
+                    "get_pull_request",
+                    "get_pull_request_diff",
                     "list_pull_requests",
-                    "search_pull_requests",
                     "create_branch",
                     "create_or_update_file",
                     "delete_file",
@@ -124,7 +123,13 @@ jobs:
                   "run_shell_command(echo)",
                   "run_shell_command(grep)",
                   "run_shell_command(head)",
-                  "run_shell_command(tail)"
+                  "run_shell_command(tail)",
+                  "read_file",
+                  "write_file",
+                  "replace",
+                  "grep_search",
+                  "glob",
+                  "list_directory"
                 ]
               }
             }
