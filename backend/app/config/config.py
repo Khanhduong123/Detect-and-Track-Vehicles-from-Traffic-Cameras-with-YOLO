@@ -15,8 +15,8 @@ class Settings(BaseSettings):
 
     # Cloud Storage (AWS S3 / GCS)
     STORAGE_BUCKET_NAME: str = "traffic-violation-evidence"
-    AWS_ACCESS_KEY_ID: str = "mock_key"
-    AWS_SECRET_ACCESS_KEY: str = "mock_secret"
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: str = ""
 
     # AI / ML Triton Inference Server
     TRITON_SERVER_URL: str = "localhost:8001"
