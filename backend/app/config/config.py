@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # AI / ML Triton Inference Server
     TRITON_SERVER_URL: str = "localhost:8001"
-    YOLO_MODEL_NAME: str = "yolov8_tensorrt"
+    YOLO_MODEL_NAME: str = "yolov8_onnx"
 
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=True
