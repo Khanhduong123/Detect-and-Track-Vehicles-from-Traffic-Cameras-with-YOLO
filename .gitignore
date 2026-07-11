@@ -123,3 +123,6 @@ model_repository/**/*.pth
 dataset/
 mlflow.db
 mlruns/
+
+.gemini/
+gha-creds-*.json
