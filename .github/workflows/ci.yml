@@ -32,6 +32,9 @@ jobs:
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
           fi
+          if [ -f backend/requirements.txt ]; then
+            pip install -r backend/requirements.txt
+          fi
           # Ensure essential validation and testing tools are installed in the runner
           pip install pre-commit pytest mypy black isort ruff detect-secrets xenon
 
@@ -84,6 +87,9 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then
             pip install -r requirements.txt
+          fi
+          if [ -f backend/requirements.txt ]; then
+            pip install -r backend/requirements.txt
           fi
           pip install pytest
 
