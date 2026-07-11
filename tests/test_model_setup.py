@@ -1,7 +1,14 @@
 import os
 import re
 
+import pytest
 
+IS_CI = os.getenv("GITHUB_ACTIONS") == "true"
+
+
+@pytest.mark.skipif(
+    IS_CI, reason="ONNX model weight files are ignored in Git and not present in CI"
+)
 def test_model_exists():
     model_path = "model_repository/yolov8_onnx/1/model.onnx"
     assert os.path.exists(model_path), "YOLOv8 ONNX model file does not exist!"
