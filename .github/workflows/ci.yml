@@ -13,7 +13,7 @@ on:
 
 jobs:
   test:
-    name: Code Quality (Lint check)
+    name: Code Quality (Lint and Testing check)
     runs-on: ubuntu-latest
 
     steps:
