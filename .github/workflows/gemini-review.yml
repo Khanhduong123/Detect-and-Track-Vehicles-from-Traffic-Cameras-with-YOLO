@@ -72,7 +72,13 @@ jobs:
           settings: |-
             {
               "model": {
-                "maxSessionTurns": 50
+                "maxSessionTurns": 100
+              },
+              "sandbox": {
+                "allowedPaths": [
+                  "./",
+                  "/home/runner/.gemini"
+                ]
               },
               "telemetry": {
                 "enabled": true,

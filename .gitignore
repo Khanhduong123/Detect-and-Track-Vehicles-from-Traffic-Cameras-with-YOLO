@@ -124,5 +124,6 @@ dataset/
 mlflow.db
 mlruns/
 
-.gemini/
+.gemini/telemetry.log
+.gemini/tmp/
 gha-creds-*.json
