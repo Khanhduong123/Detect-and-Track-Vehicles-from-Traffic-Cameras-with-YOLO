@@ -30,7 +30,7 @@ class SpeedAnalyst:
         speed_kmh = speed_mps * 3.6
 
         if speed_kmh > self.speed_limit:
-            logger.warn(
+            logger.warning(
                 "Potential Speeding detected", track_id=track_id, speed=speed_kmh
             )
 
