@@ -21,13 +21,16 @@ class SpeedAnalyst:
 
         # distance in meters
         meters = pixel_distance / self.pixels_per_meter
-        seconds = len(trajectory) / fps
+        seconds = (len(trajectory) - 1) / fps
+
+        if seconds <= 0:
+            return 0.0
 
         speed_mps = meters / seconds
         speed_kmh = speed_mps * 3.6
 
         if speed_kmh > self.speed_limit:
-            logger.warn(
+            logger.warning(
                 "Potential Speeding detected", track_id=track_id, speed=speed_kmh
             )
 

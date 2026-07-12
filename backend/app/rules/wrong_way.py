@@ -19,10 +19,13 @@ class WrongWayDetector:
         end = trajectory[-1]
 
         dx = end[0] - start[0]
+        dy = end[1] - start[1]
 
-        # Simulating direction dot-product comparison
-        if dx < 0:  # Driving in reverse of typical traffic flow
-            logger.warn("Potential Wrong Way Driving detected", track_id=track_id)
+        # Calculate dot-product of movement vector and configured allowed direction
+        dot_product = dx * self.allowed_direction[0] + dy * self.allowed_direction[1]
+
+        if dot_product < 0:  # Driving in reverse of typical traffic flow
+            logger.warning("Potential Wrong Way Driving detected", track_id=track_id)
             return True
 
         return False
