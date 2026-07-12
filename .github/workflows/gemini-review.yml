@@ -44,9 +44,12 @@ jobs:
       - name: 'Pre-install Gemini Code Review Extension'
         run: |
           npm install -g @google/gemini-cli@latest
+          set +o pipefail
           yes | gemini extension install https://github.com/gemini-cli-extensions/code-review
         env:
           GEMINI_API_KEY: '${{ secrets.GEMINI_API_KEY }}'
+          GEMINI_CLI_TRUST_WORKSPACE: true
+          GEMINI_CLI_NON_INTERACTIVE: true
 
       - name: 'Run Gemini pull request review'
         uses: 'google-github-actions/run-gemini-cli@v0' # ratchet:exclude
