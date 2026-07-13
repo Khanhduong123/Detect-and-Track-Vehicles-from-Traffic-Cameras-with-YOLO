@@ -142,32 +142,34 @@ class FrameExtractor:
         if not cap.isOpened():
             raise ValueError(f"Could not open video stream: {self.video_path}")
 
-        if sampling_mode == "fps":
-            fps = cap.get(cv2.CAP_PROP_FPS)
-            if fps <= 0:
-                fps = 30.0
-            if target_fps is None or target_fps <= 0:
-                target_fps = 2.0
-            # Calculate dynamic interval to achieve target_fps
-            sampling_rate = max(1, round(fps / target_fps))
-            logger.info(
-                "Dynamic FPS sampling",
-                source_fps=fps,
-                target_fps=target_fps,
-                calculated_rate=sampling_rate,
-            )
+        try:
+            if sampling_mode == "fps":
+                fps = cap.get(cv2.CAP_PROP_FPS)
+                if fps <= 0:
+                    fps = 30.0
+                if target_fps is None or target_fps <= 0:
+                    target_fps = 2.0
+                # Calculate dynamic interval to achieve target_fps
+                sampling_rate = max(1, round(fps / target_fps))
+                logger.info(
+                    "Dynamic FPS sampling",
+                    source_fps=fps,
+                    target_fps=target_fps,
+                    calculated_rate=sampling_rate,
+                )
 
-        if sampling_mode == "motion":
-            frames = self._extract_motion(
-                cap,
-                motion_threshold=motion_threshold,
-                max_interval=max_interval,
-                min_interval=min_interval,
-            )
-        else:
-            frames = self._extract_interval_or_fps(cap, sampling_rate)
+            if sampling_mode == "motion":
+                frames = self._extract_motion(
+                    cap,
+                    motion_threshold=motion_threshold,
+                    max_interval=max_interval,
+                    min_interval=min_interval,
+                )
+            else:
+                frames = self._extract_interval_or_fps(cap, sampling_rate)
+        finally:
+            cap.release()
 
-        cap.release()
         logger.info(
             "Frame extraction completed",
             extracted_frames=len(frames),
@@ -198,7 +200,14 @@ class FrameExtractor:
         """
         Sets position to start_frame and writes frames up to end_frame.
         """
-        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        seek_success = cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+        if not seek_success or int(cap.get(cv2.CAP_PROP_POS_FRAMES)) != start_frame:
+            # Fallback to sequential read if seek is unsupported or fails
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            for _ in range(start_frame):
+                ret, _ = cap.read()
+                if not ret:
+                    break
         current_frame = start_frame
         while current_frame <= end_frame:
             ret, frame = cap.read()
@@ -226,32 +235,35 @@ class FrameExtractor:
         if not cap.isOpened():
             raise ValueError(f"Could not open video stream: {self.video_path}")
 
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        if fps <= 0:
-            fps = 30.0
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        try:
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            if fps <= 0:
+                fps = 30.0
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        if total_frames > 0:
-            start_frame = max(0, min(start_frame, total_frames - 1))
-            end_frame = max(start_frame, min(end_frame, total_frames - 1))
-        else:
-            if start_frame < 0:
-                start_frame = 0
-            if end_frame < start_frame:
-                end_frame = start_frame
+            if total_frames > 0:
+                start_frame = max(0, min(start_frame, total_frames - 1))
+                end_frame = max(start_frame, min(end_frame, total_frames - 1))
+            else:
+                if start_frame < 0:
+                    start_frame = 0
+                if end_frame < start_frame:
+                    end_frame = start_frame
 
-        logger.info(
-            "Generating clip",
-            start_frame=start_frame,
-            end_frame=end_frame,
-            output_path=output_path,
-        )
+            logger.info(
+                "Generating clip",
+                start_frame=start_frame,
+                end_frame=end_frame,
+                output_path=output_path,
+            )
 
-        out = self._setup_video_writer(output_path, fps, width, height)
-        self._write_clip_frames(cap, out, start_frame, end_frame)
-
-        cap.release()
-        out.release()
+            out = self._setup_video_writer(output_path, fps, width, height)
+            try:
+                self._write_clip_frames(cap, out, start_frame, end_frame)
+            finally:
+                out.release()
+        finally:
+            cap.release()
         return output_path

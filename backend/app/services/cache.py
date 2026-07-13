@@ -11,23 +11,27 @@ class RedisTrackCache:
         # self.client = redis.from_url(settings.REDIS_URL)
         self._mock_db: Dict[str, str] = {}
 
-    def get_track(self, track_id: int) -> Optional[dict]:
+    def get_track(self, track_id: int, video_id: str = "default") -> Optional[dict]:
         """
         Retrieve track trajectory and status from cache.
         """
-        key = f"track:{track_id}"
+        key = f"track:{video_id}:{track_id}"
         val = self._mock_db.get(key)
         if val:
             return json.loads(val)
         return None
 
-    def update_track(self, track_id: int, data: dict, ttl: int = 3600) -> None:
+    def update_track(
+        self, track_id: int, data: dict, video_id: str = "default", ttl: int = 3600
+    ) -> None:
         """
         Store tracking information in Redis with a TTL.
         """
-        key = f"track:{track_id}"
+        key = f"track:{video_id}:{track_id}"
         self._mock_db[key] = json.dumps(data)
-        logger.debug("Updated track cache in Redis", track_id=track_id)
+        logger.debug(
+            "Updated track cache in Redis", track_id=track_id, video_id=video_id
+        )
 
 
 redis_cache = RedisTrackCache()
