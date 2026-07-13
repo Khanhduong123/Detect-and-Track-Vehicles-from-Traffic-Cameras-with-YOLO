@@ -284,7 +284,9 @@ class ByteTrackerService:
             }
 
             # Update cache in Redis
-            redis_cache.update_track(track_id=track.track_id, data=track_data)
+            redis_cache.update_track(
+                track_id=track.track_id, data=track_data, video_id=video_id
+            )
 
             tracked_objects.append(
                 {
