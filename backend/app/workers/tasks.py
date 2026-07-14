@@ -42,6 +42,7 @@ def draw_annotations(
             "car": (240, 180, 56),
             "truck": (160, 230, 80),
             "bus": (200, 100, 240),
+            "motorbike": (60, 220, 240),
             "motorcycle": (60, 220, 240),
         }
         color = colors.get(cls_name, (200, 200, 200))

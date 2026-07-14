@@ -45,7 +45,7 @@ class TritonInferenceClient:
         cand_classes = class_ids[mask]  # (N,)
 
         boxes = []
-        class_names = ["car", "truck", "bus", "motorcycle"]
+        class_names = ["motorbike", "car", "truck", "bus"]
 
         # Calculate coordinates
         for i in range(cand_boxes.shape[1]):
