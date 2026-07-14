@@ -88,8 +88,8 @@ class TritonInferenceClient:
 
             # Resolve Triton HTTP port (Triton uses 8000 for HTTP, 8001 for gRPC)
             url = self.server_url
-            if "8001" in url:
-                url = url.replace("8001", "8000")
+            if url.endswith(":8001"):
+                url = url[:-5] + ":8000"
 
             client = httpclient.InferenceServerClient(url=url)
 

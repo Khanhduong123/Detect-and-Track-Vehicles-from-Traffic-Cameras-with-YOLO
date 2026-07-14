@@ -50,10 +50,11 @@ def draw_annotations(
         label += " (SPEEDING)"
     if is_wrong_way:
         label += " (WRONG WAY)"
+    text_y = max(15, y1 - 8)
     cv2.putText(
         frame,
         label,
-        (x1, y1 - 8),
+        (x1, text_y),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.5,
         color,
@@ -245,20 +246,21 @@ async def process_video_upload_job(video_id: str, file_path: str):
         jobs_status[video_id]["status"] = "failed"
         return False
 
-    out, fps, total_frames = _init_video_writer(cap, video_id)
-
-    # Initialize rule processors
-    speed_analyst = SpeedAnalyst(speed_limit_kmh=60.0, pixels_per_meter=15.0)
-    wrong_way_detector = WrongWayDetector(allowed_direction=(1.0, 0.0))
-
-    flagged_speed_ids: Set[int] = set()
-    flagged_wrong_ids: Set[int] = set()
-    unique_counted_ids: Set[int] = set()
-
-    frame_count = 0
-    t_start = time.time()
-
+    out = None
     try:
+        out, fps, total_frames = _init_video_writer(cap, video_id)
+
+        # Initialize rule processors
+        speed_analyst = SpeedAnalyst(speed_limit_kmh=60.0, pixels_per_meter=15.0)
+        wrong_way_detector = WrongWayDetector(allowed_direction=(1.0, 0.0))
+
+        flagged_speed_ids: Set[int] = set()
+        flagged_wrong_ids: Set[int] = set()
+        unique_counted_ids: Set[int] = set()
+
+        frame_count = 0
+        t_start = time.time()
+
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
@@ -305,4 +307,5 @@ async def process_video_upload_job(video_id: str, file_path: str):
         return False
     finally:
         cap.release()
-        out.release()
+        if out is not None:
+            out.release()
