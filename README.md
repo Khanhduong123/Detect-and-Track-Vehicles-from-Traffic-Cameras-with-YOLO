@@ -96,14 +96,13 @@ The frontend allows you to upload traffic videos and view vehicle speeds, wrong-
    source backend/venv/bin/activate
    ```
 3. **Install Frontend Dependencies**:
-   Make sure you have `streamlit` and `requests` installed:
+   Make sure you have `streamlit`, `requests`, and `protobuf` installed (to avoid any protobuf dependency errors):
    ```bash
-   pip install streamlit requests
+   pip install streamlit requests protobuf
    ```
-4. **Start Streamlit with Environment Override**:
-   Since the backend is running on port `8000` (and Streamlit defaults to checking port `8020`), set the `BACKEND_URL` environment variable:
+4. **Start Streamlit**:
+   Since the backend is running on port `8020` (which is the default port the frontend expects), you can start the application directly:
    ```bash
-   export BACKEND_URL=http://localhost:8000
    streamlit run app.py
    ```
 5. **Access the Web Portal**:
