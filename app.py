@@ -14,7 +14,7 @@ st.set_page_config(
 
 BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8020")
 
-# Custom Premium Styling (Dark Cyberpunk/Glassmorphism theme)
+# Custom Premium Styling (Premium Light Mode theme)
 st.markdown(
     """
     <style>
@@ -25,58 +25,58 @@ st.markdown(
     }
 
     .stApp {
-        background-color: #0d0f14;
-        color: #e2e8f0;
+        background-color: #f8fafc;
+        color: #0f172a;
     }
 
     /* Title Styling */
     .title-container {
-        background: linear-gradient(135deg, #1e2640 0%, #0f1526 100%);
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+        border: 1px solid rgba(0, 0, 0, 0.06);
         border-radius: 16px;
         padding: 24px;
         margin-bottom: 24px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
     }
     .main-title {
         font-family: 'Space Grotesk', sans-serif;
         font-weight: 800;
         font-size: 2.8rem;
-        background: linear-gradient(90deg, #38bdf8 0%, #a855f7 50%, #f43f5e 100%);
+        background: linear-gradient(90deg, #0284c7 0%, #7c3aed 50%, #db2777 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         margin-bottom: 6px;
     }
     .subtitle {
-        color: #94a3b8;
+        color: #64748b;
         font-size: 1.1rem;
         font-weight: 300;
     }
 
     /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: #0f121d;
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        background-color: #f1f5f9;
+        border-right: 1px solid rgba(0, 0, 0, 0.06);
     }
 
     /* Glowing Stat Cards */
     .kpi-card {
-        background: rgba(17, 24, 39, 0.7);
+        background: rgba(255, 255, 255, 0.9);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border-radius: 12px;
         padding: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
         transition: all 0.3s ease;
     }
     .kpi-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(56, 189, 248, 0.4);
-        box-shadow: 0 8px 30px 0 rgba(56, 189, 248, 0.15);
+        border-color: rgba(124, 58, 237, 0.3);
+        box-shadow: 0 8px 30px rgba(124, 58, 237, 0.08);
     }
     .kpi-title {
-        color: #94a3b8;
+        color: #64748b;
         font-size: 0.9rem;
         font-weight: 600;
         text-transform: uppercase;
@@ -90,40 +90,43 @@ st.markdown(
     }
 
     /* Color code the KPI values */
-    .val-blue { color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
-    .val-purple { color: #c084fc; text-shadow: 0 0 10px rgba(192, 132, 252, 0.3); }
-    .val-red { color: #f43f5e; text-shadow: 0 0 10px rgba(244, 63, 94, 0.3); }
-    .val-orange { color: #fb923c; text-shadow: 0 0 10px rgba(251, 146, 60, 0.3); }
+    .val-blue { color: #0284c7; text-shadow: 0 2px 4px rgba(2, 132, 199, 0.1); }
+    .val-purple { color: #7c3aed; text-shadow: 0 2px 4px rgba(124, 58, 237, 0.1); }
+    .val-red { color: #dc2626; text-shadow: 0 2px 4px rgba(220, 38, 38, 0.1); }
+    .val-orange { color: #ea580c; text-shadow: 0 2px 4px rgba(234, 88, 12, 0.1); }
 
     /* Alerts Panel */
     .alerts-container {
-        background: #11131e;
-        border: 1px solid rgba(244, 63, 94, 0.15);
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.06);
         border-radius: 12px;
         padding: 16px;
         height: 480px;
         overflow-y: auto;
     }
     .alert-item {
-        background: rgba(244, 63, 94, 0.08);
-        border-left: 4px solid #f43f5e;
+        background: rgba(220, 38, 38, 0.05);
+        border-left: 4px solid #dc2626;
+        color: #991b1b;
         padding: 10px 14px;
         border-radius: 4px;
         margin-bottom: 10px;
         animation: fadeIn 0.4s ease;
     }
     .alert-wrong-way {
-        background: rgba(251, 146, 60, 0.08);
-        border-left: 4px solid #fb923c;
+        background: rgba(234, 88, 12, 0.05);
+        border-left: 4px solid #ea580c;
+        color: #9a3412;
     }
     .alert-time {
         font-size: 0.75rem;
-        color: #94a3b8;
+        color: #64748b;
     }
     .alert-text {
         font-size: 0.95rem;
         font-weight: 600;
         margin-top: 2px;
+        color: #0f172a;
     }
 
     @keyframes fadeIn {
@@ -133,7 +136,7 @@ st.markdown(
 
     /* Streamlit overrides */
     div.stButton > button:first-child {
-        background: linear-gradient(90deg, #38bdf8 0%, #7c3aed 100%);
+        background: linear-gradient(90deg, #0284c7 0%, #7c3aed 100%);
         color: white;
         border: none;
         padding: 8px 24px;
@@ -142,7 +145,7 @@ st.markdown(
         transition: all 0.3s;
     }
     div.stButton > button:first-child:hover {
-        box-shadow: 0 0 16px rgba(124, 58, 237, 0.6);
+        box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
         transform: scale(1.02);
     }
     </style>
