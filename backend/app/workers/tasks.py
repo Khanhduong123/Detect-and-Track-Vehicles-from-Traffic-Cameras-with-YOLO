@@ -1,5 +1,6 @@
 # Async Task Broker / Queue worker
 import datetime
+import os
 import time
 from typing import List, Set, Tuple
 
@@ -228,6 +229,10 @@ def _init_video_writer(
     out_path = f"/tmp/processed_{video_id}"
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
+    if not out.isOpened():
+        logger.warning("mp4v codec failed to open, trying XVID fallback")
+        fourcc = cv2.VideoWriter_fourcc(*"XVID")
+        out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
     return out, fps, total_frames
 
 
@@ -309,3 +314,12 @@ async def process_video_upload_job(video_id: str, file_path: str):
         cap.release()
         if out is not None:
             out.release()
+        # Clean up the raw uploaded file once processed to save disk space
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                logger.info("Cleaned up raw uploaded file", path=file_path)
+        except Exception as e:
+            logger.warning(
+                "Failed to clean up raw uploaded file", error=str(e), path=file_path
+            )

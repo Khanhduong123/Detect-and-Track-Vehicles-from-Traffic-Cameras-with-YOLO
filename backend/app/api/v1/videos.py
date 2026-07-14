@@ -53,9 +53,9 @@ async def get_video_status(video_id: str):
 
 
 @router.get("/download/{video_id}")
-async def download_processed_video(video_id: str):
+async def download_processed_video(video_id: str, background_tasks: BackgroundTasks):
     """
-    Downloads/streams the annotated output video.
+    Downloads/streams the annotated output video, and schedules cleanup of the file afterward.
     """
     file_path = f"/tmp/processed_{video_id}"
     if not os.path.exists(file_path):
@@ -63,6 +63,21 @@ async def download_processed_video(video_id: str):
             status_code=404,
             detail="Processed video file not found or still processing",
         )
+
+    def remove_file(path: str):
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+                logger.info("Cleaned up temporary processed video file", path=path)
+        except Exception as e:
+            logger.error(
+                "Failed to clean up temporary processed video file",
+                error=str(e),
+                path=path,
+            )
+
+    background_tasks.add_task(remove_file, file_path)
+
     return FileResponse(
         file_path, media_type="video/mp4", filename=f"processed_{video_id}.mp4"
     )
