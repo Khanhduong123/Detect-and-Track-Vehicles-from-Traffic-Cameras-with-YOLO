@@ -1,4 +1,5 @@
 # Video endpoints
+import asyncio
 import os
 import uuid
 
@@ -64,11 +65,16 @@ async def download_processed_video(video_id: str, background_tasks: BackgroundTa
             detail="Processed video file not found or still processing",
         )
 
-    def remove_file(path: str):
+    async def remove_file(path: str):
+        await asyncio.sleep(
+            120
+        )  # Wait 2 minutes for client/browser to complete streaming range requests
         try:
             if os.path.exists(path):
                 os.remove(path)
-                logger.info("Cleaned up temporary processed video file", path=path)
+                logger.info(
+                    "Cleaned up temporary processed video file after delay", path=path
+                )
         except Exception as e:
             logger.error(
                 "Failed to clean up temporary processed video file",
