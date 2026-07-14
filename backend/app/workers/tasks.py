@@ -1,10 +1,12 @@
 # Async Task Broker / Queue worker
 import datetime
 import os
+import subprocess
 import time
 from typing import List, Set, Tuple
 
 import cv2
+import imageio_ffmpeg
 import numpy as np
 
 from backend.app.db.models import ViolationEvent
@@ -230,13 +232,52 @@ def _init_video_writer(
         os.path.join(os.path.dirname(__file__), "../../../data/video")
     )
     out_path = os.path.join(video_dir, f"processed_{video_id}")
+    out_path_temp = out_path + ".temp.mp4"
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
+    out = cv2.VideoWriter(out_path_temp, fourcc, fps, (width, height))
     if not out.isOpened():
         logger.warning("mp4v codec failed to open, trying XVID fallback")
         fourcc = cv2.VideoWriter_fourcc(*"XVID")
-        out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
+        out = cv2.VideoWriter(out_path_temp, fourcc, fps, (width, height))
     return out, fps, total_frames
+
+
+def _transcode_to_h264(out_path_temp: str, out_file_path: str):
+    """Converts raw processed video to H.264 browser-compatible format using imageio-ffmpeg."""
+    try:
+        ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+        cmd = [
+            ffmpeg_exe,
+            "-y",
+            "-i",
+            out_path_temp,
+            "-vcodec",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-crf",
+            "23",
+            out_file_path,
+        ]
+        subprocess.run(
+            cmd,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
+        if os.path.exists(out_path_temp):
+            os.remove(out_path_temp)
+        logger.info(
+            "Successfully transcoded video to H.264 browser-compatible format",
+            path=out_file_path,
+        )
+    except Exception as ffmpeg_err:
+        logger.error(
+            "Failed to convert video to H.264, falling back to raw output",
+            error=str(ffmpeg_err),
+        )
+        if os.path.exists(out_path_temp):
+            os.rename(out_path_temp, out_file_path)
 
 
 async def process_video_upload_job(video_id: str, file_path: str):
@@ -304,6 +345,16 @@ async def process_video_upload_job(video_id: str, file_path: str):
             os.path.join(os.path.dirname(__file__), "../../../data/video")
         )
         out_file_path = os.path.join(video_dir, f"processed_{video_id}")
+        out_path_temp = out_file_path + ".temp.mp4"
+
+        # Release output writer before transcoding
+        if out is not None:
+            out.release()
+            out = None
+
+        # Transcode to H.264
+        _transcode_to_h264(out_path_temp, out_file_path)
+
         logger.info(
             "Video processing completed",
             video_id=video_id,
@@ -316,6 +367,15 @@ async def process_video_upload_job(video_id: str, file_path: str):
             "Error during video processing job", error=str(e), video_id=video_id
         )
         jobs_status[video_id]["status"] = "failed"
+        try:
+            video_dir = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "../../../data/video")
+            )
+            out_path_temp = os.path.join(video_dir, f"processed_{video_id}.temp.mp4")
+            if os.path.exists(out_path_temp):
+                os.remove(out_path_temp)
+        except Exception:
+            pass
         return False
     finally:
         cap.release()
