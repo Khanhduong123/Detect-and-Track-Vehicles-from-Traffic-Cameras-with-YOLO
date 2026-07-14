@@ -12,3 +12,4 @@ python-multipart>=0.0.6
 structlog>=23.1.0
 sqlmodel>=0.0.19
 pytest>=7.0.0
+imageio-ffmpeg>=0.4.9

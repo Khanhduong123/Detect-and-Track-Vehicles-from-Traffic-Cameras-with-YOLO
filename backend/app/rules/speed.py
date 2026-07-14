@@ -16,12 +16,15 @@ class SpeedAnalyst:
         if len(trajectory) < 2:
             return 0.0
 
-        start, end = trajectory[0], trajectory[-1]
+        # Use a sliding window of the last 10 frames to capture real-time speed changes and avoid lag
+        window_size = 10
+        sub_trajectory = trajectory[-window_size:]
+        start, end = sub_trajectory[0], sub_trajectory[-1]
         pixel_distance = ((end[0] - start[0]) ** 2 + (end[1] - start[1]) ** 2) ** 0.5
 
         # distance in meters
         meters = pixel_distance / self.pixels_per_meter
-        seconds = (len(trajectory) - 1) / fps
+        seconds = (len(sub_trajectory) - 1) / fps
 
         if seconds <= 0:
             return 0.0

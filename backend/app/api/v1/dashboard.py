@@ -1,25 +1,46 @@
 # Dashboard Analytical endpoints
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter
 
-from backend.app.db.session import get_db
 from backend.app.shared.logging import logger
+from backend.app.shared.state import mock_db_store
 
 router = APIRouter()
 
 
 @router.get("/metrics")
-async def get_metrics(db: AsyncSession = Depends(get_db)):
+async def get_metrics():
     """
     Retrieves system violations metrics, counts, and summaries for the analyst dashboard.
     """
     logger.info("Fetching violation metrics for analyst dashboard")
-    # In real deployment, execute SQLAlchemy counts on ViolationEvent table
-    # query = select(func.count(ViolationEvent.id)).filter(...)
+    speeding_count = sum(1 for e in mock_db_store if e.violation_type == "speeding")
+    wrong_way_count = sum(1 for e in mock_db_store if e.violation_type == "wrong_way")
 
-    # Mock data output
     return {
-        "total_violations": 128,
-        "violations_by_type": {"wrong_way": 45, "speeding": 83},
-        "monitored_cameras": ["cam_01", "cam_02", "cam_03"],
+        "total_violations": len(mock_db_store),
+        "violations_by_type": {
+            "wrong_way": wrong_way_count,
+            "speeding": speeding_count,
+        },
+        "monitored_cameras": ["cam_01"],
     }
+
+
+@router.get("/violations")
+async def get_violations():
+    """
+    Retrieves all logged violation events.
+    """
+    events = []
+    for e in mock_db_store:
+        events.append(
+            {
+                "id": e.id,
+                "violation_type": e.violation_type,
+                "timestamp": e.timestamp.isoformat(),
+                "metadata_json": e.metadata_json,
+                "track_id": e.track_id,
+                "camera_id": e.camera_id,
+            }
+        )
+    return events

@@ -3,8 +3,10 @@ import os
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
+from fastapi.responses import FileResponse
 
 from backend.app.shared.logging import logger
+from backend.app.shared.state import jobs_status
 from backend.app.workers.tasks import process_video_upload_job
 
 router = APIRouter()
@@ -17,9 +19,13 @@ async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = Fil
     """
     logger.info("Video upload received", filename=file.filename)
 
-    # Save uploaded file to temporary directory/storage
+    # Save uploaded file to the local data/video directory
+    VIDEO_DIR = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../../../data/video")
+    )
+    os.makedirs(VIDEO_DIR, exist_ok=True)
     safe_filename = f"{uuid.uuid4()}_{os.path.basename(file.filename or 'video.mp4')}"
-    temp_path = f"/tmp/{safe_filename}"
+    temp_path = os.path.join(VIDEO_DIR, safe_filename)
     try:
         with open(temp_path, "wb") as f:
             f.write(await file.read())
@@ -38,3 +44,33 @@ async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = Fil
         "filename": file.filename,
         "video_id": safe_filename,
     }
+
+
+@router.get("/status/{video_id}")
+async def get_video_status(video_id: str):
+    """
+    Retrieves the processing status, progress percentage, and statistics of a video job.
+    """
+    if video_id not in jobs_status:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return jobs_status[video_id]
+
+
+@router.get("/download/{video_id}")
+async def download_processed_video(video_id: str):
+    """
+    Downloads/streams the annotated output video from data/video.
+    """
+    VIDEO_DIR = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../../../data/video")
+    )
+    file_path = os.path.join(VIDEO_DIR, f"processed_{video_id}")
+    if not os.path.exists(file_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Processed video file not found or still processing",
+        )
+
+    return FileResponse(
+        file_path, media_type="video/mp4", filename=f"processed_{video_id}.mp4"
+    )
