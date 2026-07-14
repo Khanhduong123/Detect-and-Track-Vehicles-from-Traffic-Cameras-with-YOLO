@@ -226,7 +226,10 @@ def _init_video_writer(
     fps = fps if fps > 0 else 30.0
     total_frames = total_frames if total_frames > 0 else 100
 
-    out_path = f"/tmp/processed_{video_id}"
+    video_dir = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "../../../data/video")
+    )
+    out_path = os.path.join(video_dir, f"processed_{video_id}")
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     out = cv2.VideoWriter(out_path, fourcc, fps, (width, height))
     if not out.isOpened():
@@ -297,10 +300,14 @@ async def process_video_upload_job(video_id: str, file_path: str):
 
         jobs_status[video_id]["status"] = "completed"
         jobs_status[video_id]["progress"] = 100.0
+        video_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "../../../data/video")
+        )
+        out_file_path = os.path.join(video_dir, f"processed_{video_id}")
         logger.info(
             "Video processing completed",
             video_id=video_id,
-            out_file=f"/tmp/processed_{video_id}",
+            out_file=out_file_path,
         )
         return True
 
@@ -314,12 +321,3 @@ async def process_video_upload_job(video_id: str, file_path: str):
         cap.release()
         if out is not None:
             out.release()
-        # Clean up the raw uploaded file once processed to save disk space
-        try:
-            if os.path.exists(file_path):
-                os.remove(file_path)
-                logger.info("Cleaned up raw uploaded file", path=file_path)
-        except Exception as e:
-            logger.warning(
-                "Failed to clean up raw uploaded file", error=str(e), path=file_path
-            )
