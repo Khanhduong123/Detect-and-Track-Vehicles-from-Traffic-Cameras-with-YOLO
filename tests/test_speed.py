@@ -1,4 +1,5 @@
 from backend.app.rules.speed import SpeedAnalyst
+from backend.app.workers.tasks import is_noise_or_startup
 
 
 def test_calculate_speed_insufficient_data():
@@ -23,3 +24,22 @@ def test_calculate_speed_speeding():
     trajectory = [[100, 100], [115, 100]]
     speed = analyst.calculate_speed(track_id=2, trajectory=trajectory, fps=30.0)
     assert abs(speed - 108.0) < 1e-5
+
+
+def test_is_noise_or_startup():
+    # 1. Startup phase: history len < 10
+    trajectory_short = [[100.0, 100.0]] * 5
+    bbox = [100.0, 100.0, 200.0, 200.0]
+    assert is_noise_or_startup(bbox, trajectory_short, 1920, 1080) is True
+
+    # 2. Screen boundary: within 5% margin
+    # 5% of 1920 is 96. Bottom-center of [10.0, 10.0, 90.0, 90.0] is (50.0, 90.0) -> cx=50.0 is < 96
+    trajectory_long = [[50.0, 90.0]] * 10
+    bbox_border = [10.0, 10.0, 90.0, 90.0]
+    assert is_noise_or_startup(bbox_border, trajectory_long, 1920, 1080) is True
+
+    # 3. Normal region with sufficient history
+    # Bottom center is (960.0, 540.0)
+    trajectory_normal = [[960.0, 540.0]] * 10
+    bbox_normal = [910.0, 490.0, 1010.0, 540.0]
+    assert is_noise_or_startup(bbox_normal, trajectory_normal, 1920, 1080) is False

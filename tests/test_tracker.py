@@ -69,3 +69,40 @@ def test_tracker_service_video2():
     assert len(res2) == 1
     assert res2[0]["track_id"] == 1
     assert res2[0]["class"] == "truck"
+
+
+def test_tracker_bottom_center_and_smoothing():
+    tracker = ByteTracker(track_thresh=0.5, match_thresh=0.5)
+
+    # 1. Test bottom-center coordinate extraction
+    dets = [{"bbox": [100, 100, 200, 300], "confidence": 0.9, "class": "car"}]
+    tracks = tracker.update(dets)
+    assert len(tracks) == 1
+    # Bottom center of [100, 100, 200, 300] is ((100+200)/2, 300) = (150.0, 300.0)
+    assert tracks[0].center == (150.0, 300.0)
+    assert tracks[0].history == [[150.0, 300.0]]
+
+    # 2. Test smoothing and history sliding window
+    # Update track 12 times with shifting boxes
+    for i in range(1, 13):
+        # Shift bbox x by 10 pixels each time
+        # Raw bottom center will be (150.0 + i*10, 300.0)
+        x_shift = i * 10
+        bbox_new = [100 + x_shift, 100, 200 + x_shift, 300]
+        dets_new = [{"bbox": bbox_new, "confidence": 0.9, "class": "car"}]
+        tracks = tracker.update(dets_new)
+
+    assert len(tracks) == 1
+    # Check that history length is capped at 10
+    assert len(tracks[0].history) == 10
+
+    # Check that the last coordinate is smoothed (moving average of last 5 raw points)
+    # Raw history coordinates for last 5 frames (i=8 to 12):
+    # i=8: 150 + 80 = 230
+    # i=9: 150 + 90 = 240
+    # i=10: 150 + 100 = 250
+    # i=11: 150 + 110 = 260
+    # i=12: 150 + 120 = 270
+    # Average x: (230 + 240 + 250 + 260 + 270) / 5 = 250.0
+    assert abs(tracks[0].history[-1][0] - 250.0) < 1e-5
+    assert abs(tracks[0].history[-1][1] - 300.0) < 1e-5

@@ -31,7 +31,20 @@ def draw_annotations(
 ) -> None:
     """Draws bounding boxes, speeds, and trajectories on the frame."""
     x1, y1, x2, y2 = map(int, bbox)
-    if is_speeding:
+    is_locking = len(history) < 10
+
+    if is_locking:
+        # Show default/normal color during locking/startup phase
+        colors = {
+            "car": (240, 180, 56),
+            "truck": (160, 230, 80),
+            "bus": (200, 100, 240),
+            "motorbike": (60, 220, 240),
+            "motorcycle": (60, 220, 240),
+        }
+        color = colors.get(cls_name, (200, 200, 200))
+        thickness = 2
+    elif is_speeding:
         color = (0, 0, 255)  # Red
         thickness = 3
     elif is_wrong_way:
@@ -49,11 +62,16 @@ def draw_annotations(
         thickness = 2
 
     cv2.rectangle(frame, (x1, y1), (x2, y2), color, thickness)
-    label = f"#{track_id} {cls_name} | {speed:.1f} km/h"
-    if is_speeding:
-        label += " (SPEEDING)"
-    if is_wrong_way:
-        label += " (WRONG WAY)"
+
+    if is_locking:
+        label = f"#{track_id} {cls_name} | Locking..."
+    else:
+        label = f"#{track_id} {cls_name} | {speed:.1f} km/h"
+        if is_speeding:
+            label += " (SPEEDING)"
+        if is_wrong_way:
+            label += " (WRONG WAY)"
+
     text_y = max(15, y1 - 8)
     cv2.putText(
         frame,
@@ -126,6 +144,43 @@ async def _handle_violations(
         )
 
 
+def is_noise_or_startup(
+    bbox: List[float],
+    trajectory: List[List[float]],
+    frame_width: int,
+    frame_height: int,
+    min_history_len: int = 10,
+    margin_percent: float = 0.05,
+) -> bool:
+    """
+    Implements Noise Filtering Screen (Startup / Lock).
+    Filters out vehicles in the startup phase (history < min_history_len)
+    or close to the screen borders (within margin_percent) to avoid tracking jitter/noise.
+    """
+    # 1. Startup / Lock phase check
+    if len(trajectory) < min_history_len:
+        return True
+
+    # 2. Screen boundary / margin check
+    x1, y1, x2, y2 = bbox
+    cx = (x1 + x2) / 2.0
+    cy = y2  # Bottom-Center point (x, y)
+
+    margin_x = frame_width * margin_percent
+    margin_y = frame_height * margin_percent
+
+    # If the vehicle is near the borders of the screen, treat as noise
+    if (
+        cx < margin_x
+        or cx > (frame_width - margin_x)
+        or cy < margin_y
+        or cy > (frame_height - margin_y)
+    ):
+        return True
+
+    return False
+
+
 async def _process_single_frame(
     frame: np.ndarray,
     video_id: str,
@@ -138,6 +193,7 @@ async def _process_single_frame(
 ) -> None:
     """Orchestrates frame object detection, tracking, violation checking, and drawing."""
     detections = triton_client.detect_objects(frame, conf_threshold=0.45)
+    frame_height, frame_width = frame.shape[:2]
 
     tracker_input = [
         {"bbox": d["bbox"], "confidence": d["confidence"], "class": d["class"]}
@@ -155,8 +211,21 @@ async def _process_single_frame(
         unique_counted_ids.add(track_id)
 
         speed = speed_analyst.calculate_speed(track_id, trajectory, fps=fps)
-        is_speeding = speed > 60.0
-        is_wrong_way = wrong_way_detector.check_violation(track_id, trajectory)
+
+        # Apply Noise Filtering Screen (Startup / Lock)
+        if is_noise_or_startup(
+            bbox,
+            trajectory,
+            frame_width,
+            frame_height,
+            min_history_len=10,
+            margin_percent=0.05,
+        ):
+            is_speeding = False
+            is_wrong_way = False
+        else:
+            is_speeding = speed > speed_analyst.speed_limit
+            is_wrong_way = wrong_way_detector.check_violation(track_id, trajectory)
 
         await _handle_violations(
             track_id=track_id,
