@@ -20,20 +20,24 @@ class STrack:
         self.track_id = track_id
         self.state = TrackState.New
         self.history: List[List[float]] = []
+        self.raw_history: List[List[float]] = []
         self.start_frame = 0
         self.frame_id = 0
 
     @property
     def center(self) -> Tuple[float, float]:
+        # Coordinate Extraction: Convert to Bottom-Center point (cx, cy)
         cx = (self.bbox[0] + self.bbox[2]) / 2.0
-        cy = (self.bbox[1] + self.bbox[3]) / 2.0
+        cy = self.bbox[3]
         return (cx, cy)
 
     def activate(self, frame_id: int):
         self.state = TrackState.Tracked
         self.start_frame = frame_id
         self.frame_id = frame_id
-        self.history = [list(self.center)]
+        pt = list(self.center)
+        self.raw_history = [pt]
+        self.history = [pt]
 
     def update(self, new_track: "STrack", frame_id: int):
         self.bbox = new_track.bbox
@@ -41,7 +45,20 @@ class STrack:
         self.cls_name = new_track.cls_name
         self.state = TrackState.Tracked
         self.frame_id = frame_id
-        self.history.append(list(self.center))
+
+        pt = list(self.center)
+        self.raw_history.append(pt)
+        self.raw_history = self.raw_history[-5:]
+
+        # Smoothing & Window Filtering: Moving average of the last 5 frames to reduce coordinate noise
+        window_size = 5
+        last_pts = self.raw_history[-window_size:]
+        avg_x = sum(p[0] for p in last_pts) / len(last_pts)
+        avg_y = sum(p[1] for p in last_pts) / len(last_pts)
+
+        # Window Filtering: Save history of the last 10 frames
+        self.history.append([avg_x, avg_y])
+        self.history = self.history[-10:]
 
     def mark_lost(self):
         self.state = TrackState.Lost

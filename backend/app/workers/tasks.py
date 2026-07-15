@@ -31,7 +31,20 @@ def draw_annotations(
 ) -> None:
     """Draws bounding boxes, speeds, and trajectories on the frame."""
     x1, y1, x2, y2 = map(int, bbox)
-    if is_speeding:
+    is_locking = len(history) < 10
+
+    if is_locking:
+        # Show default/normal color during locking/startup phase
+        colors = {
+            "car": (240, 180, 56),
+            "truck": (160, 230, 80),
+            "bus": (200, 100, 240),
+            "motorbike": (60, 220, 240),
+            "motorcycle": (60, 220, 240),
+        }
+        color = colors.get(cls_name, (200, 200, 200))
+        thickness = 2
+    elif is_speeding:
         color = (0, 0, 255)  # Red
         thickness = 3
     elif is_wrong_way:
@@ -49,11 +62,16 @@ def draw_annotations(
         thickness = 2
 
     cv2.rectangle(frame, (x1, y1), (x2, y2), color, thickness)
-    label = f"#{track_id} {cls_name} | {speed:.1f} km/h"
-    if is_speeding:
-        label += " (SPEEDING)"
-    if is_wrong_way:
-        label += " (WRONG WAY)"
+
+    if is_locking:
+        label = f"#{track_id} {cls_name} | Locking..."
+    else:
+        label = f"#{track_id} {cls_name} | {speed:.1f} km/h"
+        if is_speeding:
+            label += " (SPEEDING)"
+        if is_wrong_way:
+            label += " (WRONG WAY)"
+
     text_y = max(15, y1 - 8)
     cv2.putText(
         frame,
@@ -73,7 +91,7 @@ def draw_annotations(
         )
 
 
-async def _handle_violations(
+def _handle_violations(
     track_id: int,
     cls_name: str,
     bbox: List[float],
@@ -82,14 +100,20 @@ async def _handle_violations(
     is_wrong_way: bool,
     flagged_speed_ids: Set[int],
     flagged_wrong_ids: Set[int],
+    video_time_seconds: float = 0.0,
 ) -> None:
     """Handles triggering alerts and appending events to the mock DB."""
+    # Convert video offset seconds to a datetime timestamp offset from 1970-01-01
+    video_timestamp = datetime.datetime(1970, 1, 1, 0, 0, 0) + datetime.timedelta(
+        seconds=video_time_seconds
+    )
+
     if is_speeding and track_id not in flagged_speed_ids:
         flagged_speed_ids.add(track_id)
         event = ViolationEvent(
             id=len(mock_db_store) + 1,
             violation_type="speeding",
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=video_timestamp,
             metadata_json={
                 "speed": speed,
                 "bbox": bbox,
@@ -99,7 +123,7 @@ async def _handle_violations(
             camera_id="cam_01",
         )
         mock_db_store.append(event)
-        await alert_service.trigger_violation_alert(
+        alert_service.trigger_violation_alert(
             violation_id=track_id,
             violation_type="speeding",
             camera_id="cam_01",
@@ -110,7 +134,7 @@ async def _handle_violations(
         event = ViolationEvent(
             id=len(mock_db_store) + 1,
             violation_type="wrong_way",
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=video_timestamp,
             metadata_json={
                 "bbox": bbox,
                 "class": cls_name,
@@ -119,14 +143,51 @@ async def _handle_violations(
             camera_id="cam_01",
         )
         mock_db_store.append(event)
-        await alert_service.trigger_violation_alert(
+        alert_service.trigger_violation_alert(
             violation_id=track_id,
             violation_type="wrong_way",
             camera_id="cam_01",
         )
 
 
-async def _process_single_frame(
+def is_noise_or_startup(
+    bbox: List[float],
+    trajectory: List[List[float]],
+    frame_width: int,
+    frame_height: int,
+    min_history_len: int = 10,
+    margin_percent: float = 0.05,
+) -> bool:
+    """
+    Implements Noise Filtering Screen (Startup / Lock).
+    Filters out vehicles in the startup phase (history < min_history_len)
+    or close to the screen borders (within margin_percent) to avoid tracking jitter/noise.
+    """
+    # 1. Startup / Lock phase check
+    if len(trajectory) < min_history_len:
+        return True
+
+    # 2. Screen boundary / margin check
+    x1, y1, x2, y2 = bbox
+    cx = (x1 + x2) / 2.0
+    cy = y2  # Bottom-Center point (x, y)
+
+    margin_x = frame_width * margin_percent
+    margin_y = frame_height * margin_percent
+
+    # If the vehicle is near the borders of the screen, treat as noise
+    if (
+        cx < margin_x
+        or cx > (frame_width - margin_x)
+        or cy < margin_y
+        or cy > (frame_height - margin_y)
+    ):
+        return True
+
+    return False
+
+
+def _process_single_frame(
     frame: np.ndarray,
     video_id: str,
     fps: float,
@@ -135,9 +196,11 @@ async def _process_single_frame(
     flagged_speed_ids: Set[int],
     flagged_wrong_ids: Set[int],
     unique_counted_ids: Set[int],
+    frame_count: int = 1,
 ) -> None:
     """Orchestrates frame object detection, tracking, violation checking, and drawing."""
     detections = triton_client.detect_objects(frame, conf_threshold=0.45)
+    frame_height, frame_width = frame.shape[:2]
 
     tracker_input = [
         {"bbox": d["bbox"], "confidence": d["confidence"], "class": d["class"]}
@@ -155,10 +218,24 @@ async def _process_single_frame(
         unique_counted_ids.add(track_id)
 
         speed = speed_analyst.calculate_speed(track_id, trajectory, fps=fps)
-        is_speeding = speed > 60.0
-        is_wrong_way = wrong_way_detector.check_violation(track_id, trajectory)
 
-        await _handle_violations(
+        # Apply Noise Filtering Screen (Startup / Lock)
+        if is_noise_or_startup(
+            bbox,
+            trajectory,
+            frame_width,
+            frame_height,
+            min_history_len=10,
+            margin_percent=0.05,
+        ):
+            is_speeding = False
+            is_wrong_way = False
+        else:
+            is_speeding = speed > speed_analyst.speed_limit
+            is_wrong_way = wrong_way_detector.check_violation(track_id, trajectory)
+
+        video_time_seconds = frame_count / fps if fps > 0 else 0.0
+        _handle_violations(
             track_id=track_id,
             cls_name=cls_name,
             bbox=bbox,
@@ -167,6 +244,7 @@ async def _process_single_frame(
             is_wrong_way=is_wrong_way,
             flagged_speed_ids=flagged_speed_ids,
             flagged_wrong_ids=flagged_wrong_ids,
+            video_time_seconds=video_time_seconds,
         )
 
         draw_annotations(
@@ -281,7 +359,7 @@ def _transcode_to_h264(out_path_temp: str, out_file_path: str):
             os.rename(out_path_temp, out_file_path)
 
 
-async def process_video_upload_job(video_id: str, file_path: str):
+def process_video_upload_job(video_id: str, file_path: str):
     """
     Background job that extracts frames, queries Triton, tracks vehicles,
     evaluates rules, generates alerts, writes an annotated output video,
@@ -318,7 +396,7 @@ async def process_video_upload_job(video_id: str, file_path: str):
 
             frame_count += 1
 
-            await _process_single_frame(
+            _process_single_frame(
                 frame=frame,
                 video_id=video_id,
                 fps=fps,
@@ -327,6 +405,7 @@ async def process_video_upload_job(video_id: str, file_path: str):
                 flagged_speed_ids=flagged_speed_ids,
                 flagged_wrong_ids=flagged_wrong_ids,
                 unique_counted_ids=unique_counted_ids,
+                frame_count=frame_count,
             )
 
             out.write(frame)
@@ -340,8 +419,6 @@ async def process_video_upload_job(video_id: str, file_path: str):
                 flagged_wrong_ids=flagged_wrong_ids,
             )
 
-        jobs_status[video_id]["status"] = "completed"
-        jobs_status[video_id]["progress"] = 100.0
         video_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "../../../data/video")
         )
@@ -355,6 +432,9 @@ async def process_video_upload_job(video_id: str, file_path: str):
 
         # Transcode to H.264
         _transcode_to_h264(out_path_temp, out_file_path)
+
+        jobs_status[video_id]["status"] = "completed"
+        jobs_status[video_id]["progress"] = 100.0
 
         logger.info(
             "Video processing completed",

@@ -3,7 +3,7 @@ from backend.app.shared.logging import logger
 
 
 class AlertService:
-    async def trigger_violation_alert(
+    def trigger_violation_alert(
         self, violation_id: int, violation_type: str, camera_id: str
     ) -> bool:
         """

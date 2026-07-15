@@ -28,7 +28,8 @@ async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = Fil
     temp_path = os.path.join(VIDEO_DIR, safe_filename)
     try:
         with open(temp_path, "wb") as f:
-            f.write(await file.read())
+            while chunk := await file.read(1024 * 1024):
+                f.write(chunk)
     except Exception as e:
         logger.error("Failed to write uploaded video file", error=str(e))
         raise HTTPException(status_code=500, detail="File upload failed")

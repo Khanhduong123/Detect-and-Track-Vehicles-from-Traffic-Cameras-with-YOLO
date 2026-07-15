@@ -21,6 +21,11 @@ class WrongWayDetector:
         dx = end[0] - start[0]
         dy = end[1] - start[1]
 
+        # Filter out negligible movements to avoid false alerts from bounding box jitter
+        displacement = (dx**2 + dy**2) ** 0.5
+        if displacement < 15.0:  # Minimum pixel displacement
+            return False
+
         # Calculate dot-product of movement vector and configured allowed direction
         dot_product = dx * self.allowed_direction[0] + dy * self.allowed_direction[1]
 

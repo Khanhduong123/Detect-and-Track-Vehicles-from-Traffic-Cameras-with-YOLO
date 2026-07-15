@@ -378,12 +378,7 @@ with col_alerts:
                     else:
                         msg = f"Vehicle #{v['track_id']} detected driving WRONG WAY!"
 
-                    alert_html += f"""
-                    <div class="alert-item {alert_cls}">
-                        <div class="alert-time">⏱️ {time_str} | {v['violation_type'].upper()}</div>
-                        <div class="alert-text">{msg}</div>
-                    </div>
-                    """
+                    alert_html += f'<div class="alert-item {alert_cls}"><div class="alert-time">⏱️ {time_str} | {v["violation_type"].upper()}</div><div class="alert-text">{msg}</div></div>'
             alert_html += "</div>"
             alerts_placeholder.markdown(alert_html, unsafe_allow_html=True)
     except Exception:
