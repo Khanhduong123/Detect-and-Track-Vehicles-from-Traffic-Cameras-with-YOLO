@@ -91,7 +91,7 @@ def draw_annotations(
         )
 
 
-async def _handle_violations(
+def _handle_violations(
     track_id: int,
     cls_name: str,
     bbox: List[float],
@@ -117,7 +117,7 @@ async def _handle_violations(
             camera_id="cam_01",
         )
         mock_db_store.append(event)
-        await alert_service.trigger_violation_alert(
+        alert_service.trigger_violation_alert(
             violation_id=track_id,
             violation_type="speeding",
             camera_id="cam_01",
@@ -137,7 +137,7 @@ async def _handle_violations(
             camera_id="cam_01",
         )
         mock_db_store.append(event)
-        await alert_service.trigger_violation_alert(
+        alert_service.trigger_violation_alert(
             violation_id=track_id,
             violation_type="wrong_way",
             camera_id="cam_01",
@@ -181,7 +181,7 @@ def is_noise_or_startup(
     return False
 
 
-async def _process_single_frame(
+def _process_single_frame(
     frame: np.ndarray,
     video_id: str,
     fps: float,
@@ -227,7 +227,7 @@ async def _process_single_frame(
             is_speeding = speed > speed_analyst.speed_limit
             is_wrong_way = wrong_way_detector.check_violation(track_id, trajectory)
 
-        await _handle_violations(
+        _handle_violations(
             track_id=track_id,
             cls_name=cls_name,
             bbox=bbox,
@@ -350,7 +350,7 @@ def _transcode_to_h264(out_path_temp: str, out_file_path: str):
             os.rename(out_path_temp, out_file_path)
 
 
-async def process_video_upload_job(video_id: str, file_path: str):
+def process_video_upload_job(video_id: str, file_path: str):
     """
     Background job that extracts frames, queries Triton, tracks vehicles,
     evaluates rules, generates alerts, writes an annotated output video,
@@ -387,7 +387,7 @@ async def process_video_upload_job(video_id: str, file_path: str):
 
             frame_count += 1
 
-            await _process_single_frame(
+            _process_single_frame(
                 frame=frame,
                 video_id=video_id,
                 fps=fps,

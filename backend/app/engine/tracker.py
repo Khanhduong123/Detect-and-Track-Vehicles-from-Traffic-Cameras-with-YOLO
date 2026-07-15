@@ -48,6 +48,7 @@ class STrack:
 
         pt = list(self.center)
         self.raw_history.append(pt)
+        self.raw_history = self.raw_history[-5:]
 
         # Smoothing & Window Filtering: Moving average of the last 5 frames to reduce coordinate noise
         window_size = 5
