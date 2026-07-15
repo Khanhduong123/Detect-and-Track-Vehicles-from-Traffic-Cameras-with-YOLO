@@ -73,9 +73,9 @@ The FastAPI backend handles orchestration, video processing queue, and vehicle t
    pip install -r requirements.txt
    ```
 4. **Run the Backend Server**:
-   By default, the backend runs on port `8000`. Run the following command:
+   By default, the backend runs on port `8020` to avoid conflicts with Triton's HTTP port. Run the following command:
    ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+   uvicorn app.main:app --host 0.0.0.0 --port 8020 --reload
    ```
 
    > [!TIP]
