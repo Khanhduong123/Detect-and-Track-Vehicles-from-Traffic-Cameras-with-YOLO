@@ -409,8 +409,6 @@ def process_video_upload_job(video_id: str, file_path: str):
                 flagged_wrong_ids=flagged_wrong_ids,
             )
 
-        jobs_status[video_id]["status"] = "completed"
-        jobs_status[video_id]["progress"] = 100.0
         video_dir = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "../../../data/video")
         )
@@ -424,6 +422,9 @@ def process_video_upload_job(video_id: str, file_path: str):
 
         # Transcode to H.264
         _transcode_to_h264(out_path_temp, out_file_path)
+
+        jobs_status[video_id]["status"] = "completed"
+        jobs_status[video_id]["progress"] = 100.0
 
         logger.info(
             "Video processing completed",
