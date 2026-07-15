@@ -59,23 +59,19 @@ Triton is used to serve the YOLOv8 model for object detection. Ensure Docker is 
 
 The FastAPI backend handles orchestration, video processing queue, and vehicle tracking.
 
-1. **Navigate to the Backend directory**:
-   ```bash
-   cd backend
-   ```
-2. **Create and Activate a Virtual Environment**:
+1. **Create and Activate a Virtual Environment** (from repository root):
    ```bash
    python -m venv venv
    source venv/bin/activate
    ```
-3. **Install Dependencies**:
+2. **Install Dependencies**:
    ```bash
-   pip install -r requirements.txt
+   pip install -r backend/requirements.txt
    ```
-4. **Run the Backend Server**:
-   By default, the backend runs on port `8020` to avoid conflicts with Triton's HTTP port. Run the following command:
+3. **Run the Backend Server**:
+   By default, the backend runs on port `8020` to avoid conflicts with Triton's HTTP port. Run the following command from the repository root:
    ```bash
-   uvicorn app.main:app --host 0.0.0.0 --port 8020 --reload
+   PYTHONPATH=. uvicorn backend.app.main:app --host 0.0.0.0 --port 8020 --reload
    ```
 
    > [!TIP]
