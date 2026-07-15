@@ -100,14 +100,20 @@ def _handle_violations(
     is_wrong_way: bool,
     flagged_speed_ids: Set[int],
     flagged_wrong_ids: Set[int],
+    video_time_seconds: float = 0.0,
 ) -> None:
     """Handles triggering alerts and appending events to the mock DB."""
+    # Convert video offset seconds to a datetime timestamp offset from 1970-01-01
+    video_timestamp = datetime.datetime(1970, 1, 1, 0, 0, 0) + datetime.timedelta(
+        seconds=video_time_seconds
+    )
+
     if is_speeding and track_id not in flagged_speed_ids:
         flagged_speed_ids.add(track_id)
         event = ViolationEvent(
             id=len(mock_db_store) + 1,
             violation_type="speeding",
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=video_timestamp,
             metadata_json={
                 "speed": speed,
                 "bbox": bbox,
@@ -128,7 +134,7 @@ def _handle_violations(
         event = ViolationEvent(
             id=len(mock_db_store) + 1,
             violation_type="wrong_way",
-            timestamp=datetime.datetime.utcnow(),
+            timestamp=video_timestamp,
             metadata_json={
                 "bbox": bbox,
                 "class": cls_name,
@@ -190,6 +196,7 @@ def _process_single_frame(
     flagged_speed_ids: Set[int],
     flagged_wrong_ids: Set[int],
     unique_counted_ids: Set[int],
+    frame_count: int = 1,
 ) -> None:
     """Orchestrates frame object detection, tracking, violation checking, and drawing."""
     detections = triton_client.detect_objects(frame, conf_threshold=0.45)
@@ -227,6 +234,7 @@ def _process_single_frame(
             is_speeding = speed > speed_analyst.speed_limit
             is_wrong_way = wrong_way_detector.check_violation(track_id, trajectory)
 
+        video_time_seconds = frame_count / fps if fps > 0 else 0.0
         _handle_violations(
             track_id=track_id,
             cls_name=cls_name,
@@ -236,6 +244,7 @@ def _process_single_frame(
             is_wrong_way=is_wrong_way,
             flagged_speed_ids=flagged_speed_ids,
             flagged_wrong_ids=flagged_wrong_ids,
+            video_time_seconds=video_time_seconds,
         )
 
         draw_annotations(
@@ -396,6 +405,7 @@ def process_video_upload_job(video_id: str, file_path: str):
                 flagged_speed_ids=flagged_speed_ids,
                 flagged_wrong_ids=flagged_wrong_ids,
                 unique_counted_ids=unique_counted_ids,
+                frame_count=frame_count,
             )
 
             out.write(frame)
